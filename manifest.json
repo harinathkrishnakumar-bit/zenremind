@@ -1,0 +1,22 @@
+{
+  "name": "ZenRemind",
+  "short_name": "ZenRemind",
+  "description": "Smart Task & Habit Management",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fefcfb",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/906/906334.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/906/906334.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
