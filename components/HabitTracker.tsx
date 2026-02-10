@@ -70,7 +70,10 @@ const HabitTracker: React.FC<HabitTrackerProps> = ({ habits, onToggleDate, onAdd
               </div>
             </div>
             
-            <div ref={el => scrollContainerRefs.current[idx] = el} className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
+            <div 
+              ref={(el) => { scrollContainerRefs.current[idx] = el; }} 
+              className="flex gap-3 overflow-x-auto pb-4 no-scrollbar"
+            >
               {habitTimeline.map(day => (
                 <div key={day.full} className="flex flex-col items-center gap-2 shrink-0">
                   <span className={`text-[10px] font-bold ${day.isToday ? 'text-orange-500' : 'text-gray-300'}`}>{day.weekday}</span>

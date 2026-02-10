@@ -2,6 +2,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SmartReminderResponse, Priority } from "../types";
 
+// Static type definition for the process global used by Vite define
+declare var process: {
+  env: {
+    API_KEY: string;
+  };
+};
+
 // Always use process.env.API_KEY directly when initializing the GoogleGenAI client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
