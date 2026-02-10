@@ -1,7 +1,7 @@
 
 # ZenRemind: Simple Setup Guide (Non-Tech Version)
 
-Follow these steps exactly to get your personal reminder system running for free.
+Follow these steps exactly to get your personal reminder system running for free..
 
 ## Step 1: Get your AI Key (The "Brain")
 1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
