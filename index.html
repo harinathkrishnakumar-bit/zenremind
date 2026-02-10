@@ -12,29 +12,43 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
         body {
             font-family: 'Inter', sans-serif;
             background-color: #fcfcfc;
             color: #1f2937;
             -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .pb-safe-area {
+            padding-bottom: calc(0.5rem + var(--sab));
         }
         .btn-primary {
             background-color: #f97316;
             color: white;
             transition: all 0.2s ease;
         }
-        .btn-primary:hover {
+        .btn-primary:active {
+            transform: scale(0.95);
             background-color: #ea580c;
-            transform: translateY(-1px);
-        }
-        .card-shadow {
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .border-orange-soft { border-color: #ffedd5; }
-        .bg-orange-soft { background-color: #fff7ed; }
+        /* Smooth page transitions */
+        .animate-in {
+            animation-duration: 0.3s;
+            animation-fill-mode: both;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation-name: fadeIn; }
+        @keyframes slideInUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .slide-in-up { animation-name: slideInUp; }
     </style>
 <script type="importmap">
 {
@@ -53,6 +67,6 @@
 <body>
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
-
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>

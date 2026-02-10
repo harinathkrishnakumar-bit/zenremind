@@ -3,35 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { SmartReminderResponse, Priority } from "../types";
 
 // Always use process.env.API_KEY directly when initializing the GoogleGenAI client
-//const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-const WORKER_URL = import.meta.env.VITE_GEMINI_WORKER_URL;
-
-export async function generateWithGemini(prompt: string) {
-  if (!WORKER_URL) throw new Error("Missing VITE_GEMINI_WORKER_URL");
-
-  const res = await fetch(WORKER_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "gemini-1.5-flash",
-      prompt,
-    }),
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data?.error || JSON.stringify(data));
-  }
-
-  // Extract text safely from Gemini response
-  const text =
-    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") || "";
-
-  return text;
-}
-
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const parseSmartReminder = async (input: string): Promise<Partial<SmartReminderResponse>> => {
   try {
