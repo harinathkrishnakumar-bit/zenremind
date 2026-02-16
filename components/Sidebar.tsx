@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 interface SidebarProps {
   activeView: ViewType;
   onViewChange: (view: ViewType) => void;
-  isOpen: boolean; // Keep prop for interface compatibility but ignore for layout
+  isOpen: boolean; 
   onClose: () => void;
   stats: Record<string, number>;
 }
@@ -16,10 +16,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, stats }) =>
     { id: ViewType.DASHBOARD, label: 'Overview', icon: 'sparkles' as const },
     { id: ViewType.TODAY, label: 'Today', icon: 'clock' as const, count: stats.today },
     { id: ViewType.WEEK, label: 'Upcoming', icon: 'calendar' as const, count: stats.week },
-    { id: ViewType.MONTH, label: 'Monthly', icon: 'target' as const, count: stats.month },
-    { id: ViewType.WORKS, label: 'Works to do', icon: 'edit' as const, count: stats.works },
+    { id: ViewType.WORKS, label: 'Works', icon: 'edit' as const, count: stats.works },
+    { id: ViewType.RENEWALS, label: 'Renewals & Policy', icon: 'calendar' as const, count: stats.renewals },
     { id: ViewType.SHOPPING, label: 'Buy List', icon: 'list' as const, count: stats.shopping },
-    { id: ViewType.OUTSTANDING, label: 'Events', icon: 'cake' as const, count: stats.outstanding },
+    { id: ViewType.OUTSTANDING, label: 'Birthdays', icon: 'cake' as const, count: stats.outstanding },
     { id: ViewType.HABITS, label: 'Habits', icon: 'star' as const, count: stats.habits },
   ];
 

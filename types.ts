@@ -14,7 +14,8 @@ export enum ViewType {
   SHOPPING = 'SHOPPING',
   OUTSTANDING = 'OUTSTANDING',
   HABITS = 'HABITS',
-  WORKS = 'WORKS'
+  WORKS = 'WORKS',
+  RENEWALS = 'RENEWALS'
 }
 
 export enum RecurrenceType {
@@ -40,10 +41,12 @@ export interface Reminder {
   priority: Priority;
   category: string;
   completed: boolean;
-  completedInstances?: string[]; // Stores IDs of specific completed occurrences (e.g. "baseId::timestamp")
+  completedInstances?: string[]; 
   createdAt: string;
   cost?: number;
   recurrence?: RecurrenceConfig;
+  policyNumber?: string; // Additional field for policy details
+  provider?: string;    // Additional field for policy details
 }
 
 export interface Habit {
@@ -51,12 +54,6 @@ export interface Habit {
   title: string;
   completedDates: string[]; 
   createdAt: string;
-}
-
-export interface VaultField {
-  id: string;
-  label: string;
-  value: string;
 }
 
 export interface SmartReminderResponse {
