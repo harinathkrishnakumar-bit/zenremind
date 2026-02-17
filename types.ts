@@ -15,7 +15,8 @@ export enum ViewType {
   OUTSTANDING = 'OUTSTANDING',
   HABITS = 'HABITS',
   WORKS = 'WORKS',
-  RENEWALS = 'RENEWALS'
+  RENEWALS = 'RENEWALS',
+  VAULT = 'VAULT'
 }
 
 export enum RecurrenceType {
@@ -53,6 +54,14 @@ export interface Habit {
   id: string;
   title: string;
   completedDates: string[]; 
+  createdAt: string;
+}
+
+export interface VaultItem {
+  id: string;
+  label: string;
+  value: string;
+  category: string;
   createdAt: string;
 }
 

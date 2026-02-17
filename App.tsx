@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Reminder, ViewType, Priority, RecurrenceType, Habit } from './types';
+import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem } from './types';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import ReminderCard from './components/ReminderCard';
 import ReminderModal from './components/ReminderModal';
 import HabitTracker from './components/HabitTracker';
+import VaultView from './components/VaultView';
 import { Icon } from './components/Icon';
 import { isToday, isThisWeek, isThisMonth } from './utils/dateUtils';
 import { getOccurrencesInRange } from './utils/recurrenceUtils';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit } from './services/database';
+import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem } from './services/database';
 
 const DASHBOARD_INTERVAL = 15000;
 const STANDARD_INTERVAL = 8000;
@@ -21,6 +22,7 @@ const getIntervalForView = (view: ViewType) => {
 const App: React.FC = () => {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
+  const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
   const [activeView, setActiveView] = useState<ViewType>(ViewType.DASHBOARD);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -54,12 +56,14 @@ const App: React.FC = () => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [reminderData, habitData] = await Promise.all([
+        const [reminderData, habitData, vaultData] = await Promise.all([
           fetchReminders(user?.id || null),
-          fetchHabits(user?.id || null)
+          fetchHabits(user?.id || null),
+          fetchVaultItems(user?.id || null),
         ]);
         setReminders(reminderData);
         setHabits(habitData);
+        setVaultItems(vaultData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -269,6 +273,37 @@ const App: React.FC = () => {
     setHabits(prev => prev.filter(h => h.id !== id));
   };
 
+  // Vault handlers
+  const handleAddVaultItem = async (item: VaultItem) => {
+    await saveVaultItem(user?.id || null, item);
+    setVaultItems(prev => [item, ...prev]);
+  };
+
+  const handleUpdateVaultItem = async (item: VaultItem) => {
+    await saveVaultItem(user?.id || null, item);
+    setVaultItems(prev => prev.map(v => v.id === item.id ? item : v));
+  };
+
+  const handleDeleteVaultItem = async (id: string) => {
+    await deleteVaultItem(user?.id || null, id);
+    setVaultItems(prev => prev.filter(v => v.id !== id));
+  };
+
+  // Today's events for dashboard
+  const todayEvents = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now); start.setHours(0, 0, 0, 0);
+    const end = new Date(now); end.setHours(23, 59, 59, 999);
+    let events: Reminder[] = [];
+    reminders
+      .filter(r => !r.completed && r.category.toLowerCase() !== 'shopping' && r.category.toLowerCase() !== 'things to buy' && r.category.toLowerCase() !== 'work' && r.category.toLowerCase() !== 'renewal')
+      .forEach(r => {
+        const occ = getOccurrencesInRange(r, start, end);
+        events = [...events, ...occ.filter(o => !r.completedInstances?.includes(o.id))];
+      });
+    return events.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  }, [reminders]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-purple-600 to-orange-500">
@@ -373,6 +408,34 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Today's Events */}
+                <div className="bg-white border-2 border-blue-50 rounded-[2.5rem] shadow-xl shadow-blue-500/5 overflow-hidden border-t-blue-500 border-t-8">
+                  <div className="px-8 py-5 border-b border-gray-100 bg-blue-50/30 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Icon name="clock" className="w-5 h-5 text-blue-500" />
+                      <h2 className="text-xs font-black text-blue-700 uppercase tracking-widest">Today's Events</h2>
+                    </div>
+                    <span className="text-[10px] font-black text-blue-400 uppercase">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+                  </div>
+                  <div className="p-6 space-y-3">
+                    {todayEvents.length === 0 ? (
+                      <p className="text-center text-xs font-bold text-gray-300 uppercase tracking-widest py-6">Nothing scheduled for today</p>
+                    ) : todayEvents.map(item => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-blue-200 transition-all">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-black text-gray-800 truncate">{item.title}</span>
+                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">
+                            {item.category} {item.dueDate ? `• ${new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                          </span>
+                        </div>
+                        <button onClick={() => handleToggleComplete(item.id)} className="w-8 h-8 flex items-center justify-center bg-white rounded-xl border border-gray-200 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm shrink-0 ml-3">
+                          <Icon name="check" className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* High Priority */}
@@ -520,6 +583,13 @@ const App: React.FC = () => {
                   </div>
                 )}
               </div>
+            ) : activeView === ViewType.VAULT ? (
+              <VaultView
+                items={vaultItems}
+                onAdd={handleAddVaultItem}
+                onUpdate={handleUpdateVaultItem}
+                onDelete={handleDeleteVaultItem}
+              />
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                  {displayReminders.length === 0 ? (

@@ -1,8 +1,9 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Reminder, Habit } from '../types';
+import { Reminder, Habit, VaultItem } from '../types';
 
 const STORAGE_KEY_REMINDERS = 'zenremind_pro_v3_final_renewals';
 const STORAGE_KEY_HABITS = 'zenremind_habits_pro_v3_final_renewals';
+const STORAGE_KEY_VAULT = 'zenremind_vault_pro_v3';
 
 // ============================================================================
 // REMINDERS
@@ -158,7 +159,6 @@ export const saveHabit = async (userId: string | null, habit: Habit): Promise<vo
 
 export const deleteHabit = async (userId: string | null, habitId: string): Promise<void> => {
   if (!isSupabaseConfigured() || !userId) {
-    // Fallback to localStorage
     const habits = await fetchHabits(null);
     const updated = habits.filter(h => h.id !== habitId);
     localStorage.setItem(STORAGE_KEY_HABITS, JSON.stringify(updated));
@@ -175,6 +175,85 @@ export const deleteHabit = async (userId: string | null, habitId: string): Promi
     if (error) throw error;
   } catch (error) {
     console.error('Error deleting habit:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
+// VAULT ITEMS
+// ============================================================================
+
+export const fetchVaultItems = async (userId: string | null): Promise<VaultItem[]> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const saved = localStorage.getItem(STORAGE_KEY_VAULT);
+    return saved ? JSON.parse(saved) : [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('vault_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map((d: any) => ({
+      id: d.id,
+      label: d.label,
+      value: d.value,
+      category: d.category,
+      createdAt: d.created_at,
+    }));
+  } catch (error) {
+    console.error('Error fetching vault items:', error);
+    const saved = localStorage.getItem(STORAGE_KEY_VAULT);
+    return saved ? JSON.parse(saved) : [];
+  }
+};
+
+export const saveVaultItem = async (userId: string | null, item: VaultItem): Promise<void> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const items = await fetchVaultItems(null);
+    const existing = items.find(i => i.id === item.id);
+    const updated = existing ? items.map(i => i.id === item.id ? item : i) : [...items, item];
+    localStorage.setItem(STORAGE_KEY_VAULT, JSON.stringify(updated));
+    return;
+  }
+
+  try {
+    const { error } = await supabase.from('vault_items').upsert({
+      id: item.id,
+      user_id: userId,
+      label: item.label,
+      value: item.value,
+      category: item.category,
+      created_at: item.createdAt,
+    }, { onConflict: 'id' });
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving vault item:', error);
+    throw error;
+  }
+};
+
+export const deleteVaultItem = async (userId: string | null, itemId: string): Promise<void> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const items = await fetchVaultItems(null);
+    localStorage.setItem(STORAGE_KEY_VAULT, JSON.stringify(items.filter(i => i.id !== itemId)));
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from('vault_items')
+      .delete()
+      .eq('id', itemId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting vault item:', error);
     throw error;
   }
 };

@@ -97,3 +97,27 @@ CREATE TRIGGER update_habits_updated_at
   BEFORE UPDATE ON habits
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- Create vault_items table
+CREATE TABLE IF NOT EXISTS vault_items (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  value TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'Other',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vault_items_user_id ON vault_items(user_id);
+ALTER TABLE vault_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own vault items" ON vault_items FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own vault items" ON vault_items FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own vault items" ON vault_items FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own vault items" ON vault_items FOR DELETE USING (auth.uid() = user_id);
+
+CREATE TRIGGER update_vault_items_updated_at
+  BEFORE UPDATE ON vault_items
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
