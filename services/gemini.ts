@@ -9,14 +9,19 @@ declare var process: {
   };
 };
 
-// Always use process.env.API_KEY directly when initializing the GoogleGenAI client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const parseSmartReminder = async (input: string): Promise<Partial<SmartReminderResponse>> => {
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
+    console.warn("No Gemini API key — AI Smart Fill disabled.");
+    return { title: input, priority: Priority.MEDIUM, category: "Personal" };
+  }
+
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Parse this reminder or task: "${input}". 
+      model: "gemini-2.0-flash",
+      contents: `Parse this reminder or task: "${input}".
       Today's date is ${new Date().toISOString()}.
       If a price or cost is mentioned, extract it as a number.
       Return valid JSON matching the schema.`,

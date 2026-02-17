@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+:root {
+    --sat: env(safe-area-inset-top);
+    --sar: env(safe-area-inset-right);
+    --sab: env(safe-area-inset-bottom);
+    --sal: env(safe-area-inset-left);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #fcfcfc;
+    color: #1f2937;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.pb-safe-area {
+    padding-bottom: calc(0.5rem + var(--sab));
+}
+
+.btn-primary {
+    background-color: #f97316;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:active {
+    transform: scale(0.95);
+    background-color: #ea580c;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.animate-in {
+    animation-duration: 0.3s;
+    animation-fill-mode: both;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation-name: fadeIn; }
+
+@keyframes slideInUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.slide-in-up { animation-name: slideInUp; }
