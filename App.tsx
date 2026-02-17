@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [password, setPassword] = useState('');
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Initialize auth and load data
@@ -107,26 +108,38 @@ const App: React.FC = () => {
     }
 
     setAuthError('');
+    setAuthSuccess('');
     setAuthLoading(true);
 
     if (authMode === 'signup') {
-      const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+      const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
       setAuthLoading(false);
       if (error) {
         setAuthError(error.message);
+      } else if (data.user && !data.session) {
+        // Email confirmation is still on in Supabase — tell the user
+        setAuthSuccess('Account created! Check your email to confirm, then sign in.');
+        setAuthMode('signin');
+        setPassword('');
       } else {
-        setAuthError('');
+        // Email confirmation is off — user is signed in immediately
+        setAuthSuccess('Account created! You are now signed in.');
         setPassword('');
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       setAuthLoading(false);
       if (error) {
-        setAuthError('Invalid email or password.');
+        if (error.message.toLowerCase().includes('email not confirmed')) {
+          setAuthError('Please confirm your email first, then sign in. Check your inbox.');
+        } else {
+          setAuthError('Invalid email or password. If you haven\'t created an account yet, switch to "Create Account".');
+        }
       } else {
         setEmail('');
         setPassword('');
         setAuthError('');
+        setAuthSuccess('');
       }
     }
   };
@@ -407,11 +420,11 @@ const App: React.FC = () => {
                         <div className="flex flex-col gap-2">
                           <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
                             <button
-                              onClick={() => { setAuthMode('signin'); setAuthError(''); }}
+                              onClick={() => { setAuthMode('signin'); setAuthError(''); setAuthSuccess(''); }}
                               className={`flex-1 py-1.5 text-xs font-black rounded-md transition-all ${authMode === 'signin' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}
                             >Sign In</button>
                             <button
-                              onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+                              onClick={() => { setAuthMode('signup'); setAuthError(''); setAuthSuccess(''); }}
                               className={`flex-1 py-1.5 text-xs font-black rounded-md transition-all ${authMode === 'signup' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}
                             >Create Account</button>
                           </div>
@@ -432,6 +445,7 @@ const App: React.FC = () => {
                             onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
                           />
                           {authError && <p className="text-[10px] text-red-500 font-bold">{authError}</p>}
+                          {authSuccess && <p className="text-[10px] text-emerald-600 font-bold">{authSuccess}</p>}
                           <button
                             onClick={handleAuth}
                             disabled={authLoading}
