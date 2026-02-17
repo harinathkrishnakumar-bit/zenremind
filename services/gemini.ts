@@ -55,48 +55,20 @@ export const parseSmartReminder = async (input: string): Promise<Partial<SmartRe
   }
 };
 
-// Returns null if no API key, throws on API error, returns [] if image has no items
+// Returns null if server has no API key, throws on error, returns [] if no items found
 export const parseReceiptImage = async (base64Data: string, mimeType: string): Promise<Partial<GroceryItem>[] | null> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) return null;
-
-  const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: [{
-      role: 'user',
-      parts: [
-        { inlineData: { mimeType, data: base64Data } },
-        { text: `Extract all purchased items from this shopping receipt image.
-For each item provide:
-- name: product name (string)
-- category: one of "Food", "Household", "Toys", "Personal Care", "Electronics", "Other"
-- foodType: ONLY if category is "Food" — one of "Fresh" (fruits, vegetables, fresh meat, eggs, dairy), "Processed" (canned goods, cheese, bread, preserved meats, packaged foods with few additives), "Ultraprocessed" (chips, soft drinks, ready meals, candy, breakfast cereals, fast food, frozen meals)
-- price: numeric price if visible, else null
-- quantity: integer quantity, default 1
-Return a JSON array of objects.` }
-      ]
-    }],
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            name: { type: Type.STRING },
-            category: { type: Type.STRING },
-            foodType: { type: Type.STRING },
-            price: { type: Type.NUMBER },
-            quantity: { type: Type.INTEGER },
-          },
-          required: ['name', 'category']
-        }
-      }
-    }
+  const response = await fetch('/api/scan-receipt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64Data, mimeType }),
   });
 
-  const text = response.text;
-  if (!text) return [];
-  return JSON.parse(text);
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+    if (err.error?.includes('ANTHROPIC_API_KEY not configured')) return null;
+    throw new Error(err.error || `Server error ${response.status}`);
+  }
+
+  const { items } = await response.json();
+  return items || [];
 };

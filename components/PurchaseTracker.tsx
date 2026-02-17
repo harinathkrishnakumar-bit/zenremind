@@ -144,6 +144,32 @@ const PurchaseTracker: React.FC<PurchaseTrackerProps> = ({ items, onSaveItems, o
     setIsSaving(false);
   };
 
+  // Compress image to max 1200px to stay within server payload limits
+  const compressImage = (file: File): Promise<{ base64: string; mimeType: string }> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = e => {
+        img.src = e.target?.result as string;
+        img.onload = () => {
+          const MAX = 1200;
+          let { width, height } = img;
+          if (width > height ? width > MAX : height > MAX) {
+            if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+            else { width = Math.round((width * MAX) / height); height = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
   // ---- Scan Receipt ----
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -153,17 +179,9 @@ const PurchaseTracker: React.FC<PurchaseTrackerProps> = ({ items, onSaveItems, o
     setScannedItems([]);
 
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const { base64, mimeType: compressedMime } = await compressImage(file);
 
-      const extracted = await parseReceiptImage(base64, file.type || 'image/jpeg');
+      const extracted = await parseReceiptImage(base64, compressedMime);
 
       if (extracted === null) {
         setScanError('No Gemini API key found. Add API_KEY to your Vercel Environment Variables and redeploy.');
