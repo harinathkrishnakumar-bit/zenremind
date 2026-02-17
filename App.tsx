@@ -33,6 +33,9 @@ const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authError, setAuthError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Initialize auth and load data
@@ -93,24 +96,38 @@ const App: React.FC = () => {
   }, [isModalOpen, isPaused, activeView]);
 
   // Authentication handlers
-  const handleLogin = async () => {
-    if (!email.trim()) {
-      alert('Please enter your email address');
+  const handleAuth = async () => {
+    if (!email.trim() || !password.trim()) {
+      setAuthError('Please enter both email and password.');
+      return;
+    }
+    if (password.length < 6) {
+      setAuthError('Password must be at least 6 characters.');
       return;
     }
 
+    setAuthError('');
     setAuthLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.origin }
-    });
-    setAuthLoading(false);
 
-    if (error) {
-      alert(error.message);
+    if (authMode === 'signup') {
+      const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+      setAuthLoading(false);
+      if (error) {
+        setAuthError(error.message);
+      } else {
+        setAuthError('');
+        setPassword('');
+      }
     } else {
-      alert('Check your email for the magic link!');
-      setEmail('');
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      setAuthLoading(false);
+      if (error) {
+        setAuthError('Invalid email or password.');
+      } else {
+        setEmail('');
+        setPassword('');
+        setAuthError('');
+      }
     }
   };
 
@@ -387,24 +404,45 @@ const App: React.FC = () => {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+                            <button
+                              onClick={() => { setAuthMode('signin'); setAuthError(''); }}
+                              className={`flex-1 py-1.5 text-xs font-black rounded-md transition-all ${authMode === 'signin' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}
+                            >Sign In</button>
+                            <button
+                              onClick={() => { setAuthMode('signup'); setAuthError(''); }}
+                              className={`flex-1 py-1.5 text-xs font-black rounded-md transition-all ${authMode === 'signup' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}
+                            >Create Account</button>
+                          </div>
                           <input
-                            className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold"
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:border-orange-400"
                             type="email"
-                            placeholder="Enter email for magic link"
+                            placeholder="Email address"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
                           />
+                          <input
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:border-orange-400"
+                            type="password"
+                            placeholder="Password (min 6 characters)"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+                          />
+                          {authError && <p className="text-[10px] text-red-500 font-bold">{authError}</p>}
                           <button
-                            onClick={handleLogin}
-                            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition-colors"
+                            onClick={handleAuth}
+                            disabled={authLoading}
+                            className="py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition-colors disabled:opacity-50"
                           >
-                            Send Link
+                            {authLoading ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
                           </button>
+                          <p className="text-[10px] text-gray-400 text-center">Use the same email + password on all devices</p>
                         </div>
                       )}
-                      {!user && <p className="mt-2 text-[10px] text-gray-500">Use the same email on all devices to sync data</p>}
+                      {!user && <span />}
                     </div>
                   </div>
                 )}
