@@ -24,7 +24,21 @@ export const fetchReminders = async (userId: string | null): Promise<Reminder[]>
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map((d: any) => ({
+      id: d.id,
+      title: d.title,
+      description: d.description,
+      dueDate: d.due_date,
+      priority: d.priority,
+      category: d.category,
+      completed: d.completed,
+      completedInstances: d.completed_instances || [],
+      createdAt: d.created_at,
+      cost: d.cost ?? undefined,
+      recurrence: d.recurrence ?? undefined,
+      policyNumber: d.policy_number ?? undefined,
+      provider: d.provider ?? undefined,
+    }));
   } catch (error) {
     console.error('Error fetching reminders:', error);
     // Fallback to localStorage
@@ -116,7 +130,12 @@ export const fetchHabits = async (userId: string | null): Promise<Habit[]> => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map((d: any) => ({
+      id: d.id,
+      title: d.title,
+      completedDates: d.completed_dates || [],
+      createdAt: d.created_at,
+    }));
   } catch (error) {
     console.error('Error fetching habits:', error);
     // Fallback to localStorage
