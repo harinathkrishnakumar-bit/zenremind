@@ -500,6 +500,42 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Birthdays */}
+                {dashboardData.upcomingBirthdays.length > 0 && (
+                  <div className="bg-white border-2 border-pink-50 rounded-[2.5rem] shadow-xl shadow-pink-500/5 overflow-hidden border-t-pink-400 border-t-8">
+                    <div className="px-8 py-6 border-b border-gray-100 bg-pink-50/30 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">🎂</span>
+                        <h2 className="text-xs font-black text-pink-700 uppercase tracking-widest">Upcoming Birthdays</h2>
+                      </div>
+                      <button onClick={() => setActiveView(ViewType.OUTSTANDING)} className="text-[10px] font-black text-pink-600 hover:underline tracking-widest uppercase">All Birthdays</button>
+                    </div>
+                    <div className="p-8">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {dashboardData.upcomingBirthdays.map(b => {
+                          const daysUntil = Math.ceil((new Date(b.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                          const isToday = daysUntil === 0;
+                          const isSoon = daysUntil <= 7;
+                          return (
+                            <div key={b.id} className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${isToday ? 'bg-pink-50 border-pink-300' : isSoon ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-100'}`}>
+                              <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center shrink-0 shadow-md ${isToday ? 'bg-pink-500' : isSoon ? 'bg-orange-400' : 'bg-white border-2 border-gray-200'}`}>
+                                <span className={`text-[10px] font-black uppercase ${isToday || isSoon ? 'text-white' : 'text-gray-400'}`}>{new Date(b.dueDate).toLocaleString('default', { month: 'short' })}</span>
+                                <span className={`text-lg font-black leading-none ${isToday || isSoon ? 'text-white' : 'text-gray-700'}`}>{new Date(b.dueDate).getDate()}</span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-black text-gray-800 truncate">{b.title}</p>
+                                <p className={`text-[10px] font-black uppercase tracking-tight ${isToday ? 'text-pink-500' : isSoon ? 'text-orange-500' : 'text-gray-400'}`}>
+                                  {isToday ? '🎉 Today!' : `In ${daysUntil} day${daysUntil === 1 ? '' : 's'}`}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Habits */}
                 <HabitTracker
                   habits={habits}
