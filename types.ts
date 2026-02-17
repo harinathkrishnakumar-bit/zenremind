@@ -16,7 +16,8 @@ export enum ViewType {
   HABITS = 'HABITS',
   WORKS = 'WORKS',
   RENEWALS = 'RENEWALS',
-  VAULT = 'VAULT'
+  VAULT = 'VAULT',
+  PURCHASES = 'PURCHASES'
 }
 
 export enum RecurrenceType {
@@ -62,6 +63,21 @@ export interface VaultItem {
   label: string;
   value: string;
   category: string;
+  createdAt: string;
+}
+
+export type GroceryCategory = 'Food' | 'Household' | 'Toys' | 'Personal Care' | 'Electronics' | 'Other';
+export type FoodType = 'Fresh' | 'Processed' | 'Ultraprocessed';
+
+export interface GroceryItem {
+  id: string;
+  name: string;
+  category: GroceryCategory;
+  foodType?: FoodType;
+  price?: number;
+  quantity: number;
+  store?: string;
+  purchasedAt: string;
   createdAt: string;
 }
 

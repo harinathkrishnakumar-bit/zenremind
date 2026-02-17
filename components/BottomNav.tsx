@@ -20,6 +20,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeView, onViewChange, stats }
     { id: ViewType.OUTSTANDING, icon: 'cake' as const, label: 'Birthdays', count: stats.outstanding },
     { id: ViewType.HABITS, icon: 'star' as const, label: 'Habits', count: stats.habits },
     { id: ViewType.VAULT, icon: 'alert' as const, label: 'Vault' },
+    { id: ViewType.PURCHASES, icon: 'list' as const, label: 'Purchases' },
   ];
 
   return (

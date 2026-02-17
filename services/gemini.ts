@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { SmartReminderResponse, Priority } from "../types";
+import { SmartReminderResponse, Priority, GroceryItem } from "../types";
 
 // Static type definition for the process global used by Vite define
 declare var process: {
@@ -52,5 +52,55 @@ export const parseSmartReminder = async (input: string): Promise<Partial<SmartRe
       priority: Priority.MEDIUM,
       category: "General"
     };
+  }
+};
+
+export const parseReceiptImage = async (base64Data: string, mimeType: string): Promise<Partial<GroceryItem>[]> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return [];
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: [{
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType, data: base64Data } },
+          { text: `Extract all purchased items from this shopping receipt image.
+For each item provide:
+- name: product name (string)
+- category: one of "Food", "Household", "Toys", "Personal Care", "Electronics", "Other"
+- foodType: ONLY if category is "Food" — one of "Fresh" (fruits, vegetables, fresh meat, eggs, dairy), "Processed" (canned goods, cheese, bread, preserved meats, packaged foods with few additives), "Ultraprocessed" (chips, soft drinks, ready meals, candy, breakfast cereals, fast food, frozen meals)
+- price: numeric price if visible, else null
+- quantity: integer quantity, default 1
+Return a JSON array of objects.` }
+        ]
+      }],
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              category: { type: Type.STRING },
+              foodType: { type: Type.STRING },
+              price: { type: Type.NUMBER },
+              quantity: { type: Type.INTEGER },
+            },
+            required: ['name', 'category']
+          }
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) return [];
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Receipt parsing error:', error);
+    return [];
   }
 };

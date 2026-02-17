@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem } from './types';
+import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem } from './types';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import ReminderCard from './components/ReminderCard';
 import ReminderModal from './components/ReminderModal';
 import HabitTracker from './components/HabitTracker';
 import VaultView from './components/VaultView';
+import PurchaseTracker from './components/PurchaseTracker';
 import { Icon } from './components/Icon';
 import { isToday, isThisWeek, isThisMonth } from './utils/dateUtils';
 import { getOccurrencesInRange } from './utils/recurrenceUtils';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem } from './services/database';
+import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem } from './services/database';
 
 const DASHBOARD_INTERVAL = 15000;
 const STANDARD_INTERVAL = 8000;
@@ -23,6 +24,7 @@ const App: React.FC = () => {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
+  const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([]);
   const [activeView, setActiveView] = useState<ViewType>(ViewType.DASHBOARD);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -60,14 +62,16 @@ const App: React.FC = () => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [reminderData, habitData, vaultData] = await Promise.all([
+        const [reminderData, habitData, vaultData, groceryData] = await Promise.all([
           fetchReminders(user?.id || null),
           fetchHabits(user?.id || null),
           fetchVaultItems(user?.id || null),
+          fetchGroceryItems(user?.id || null),
         ]);
         setReminders(reminderData);
         setHabits(habitData);
         setVaultItems(vaultData);
+        setGroceryItems(groceryData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -337,6 +341,22 @@ const App: React.FC = () => {
     }
   };
 
+  // Grocery/Purchase handlers
+  const handleSaveGroceryItems = async (items: GroceryItem[]) => {
+    setGroceryItems(prev => {
+      const ids = new Set(items.map(i => i.id));
+      return [...prev.filter(p => !ids.has(p.id)), ...items];
+    });
+    for (const item of items) {
+      try { await saveGroceryItem(user?.id || null, item); } catch (e) { console.error('Failed to save grocery item:', e); }
+    }
+  };
+
+  const handleDeleteGroceryItem = async (id: string) => {
+    setGroceryItems(prev => prev.filter(i => i.id !== id));
+    try { await deleteGroceryItem(user?.id || null, id); } catch (e) { console.error('Failed to delete grocery item:', e); }
+  };
+
   // Today's events for dashboard
   const todayEvents = useMemo(() => {
     const now = new Date();
@@ -373,7 +393,7 @@ const App: React.FC = () => {
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 z-20">
           <div className="flex items-center gap-2">
             <h2 className="text-sm sm:text-lg font-black text-gray-800 tracking-tight truncate">
-              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView.replace(/_/g, ' ')}
+              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView.replace(/_/g, ' ')}
             </h2>
           </div>
 
@@ -696,6 +716,12 @@ const App: React.FC = () => {
                 onUpdate={handleUpdateVaultItem}
                 onDelete={handleDeleteVaultItem}
                 syncError={vaultSyncError}
+              />
+            ) : activeView === ViewType.PURCHASES ? (
+              <PurchaseTracker
+                items={groceryItems}
+                onSaveItems={handleSaveGroceryItems}
+                onDeleteItem={handleDeleteGroceryItem}
               />
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

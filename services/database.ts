@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Reminder, Habit, VaultItem } from '../types';
+import { Reminder, Habit, VaultItem, GroceryItem } from '../types';
 
 const STORAGE_KEY_REMINDERS = 'zenremind_pro_v3_final_renewals';
 const STORAGE_KEY_HABITS = 'zenremind_habits_pro_v3_final_renewals';
@@ -283,5 +283,85 @@ export const deleteVaultItem = async (userId: string | null, itemId: string): Pr
   } catch (error) {
     console.error('Error deleting vault item from Supabase:', error);
     throw error;
+  }
+};
+
+// ============================================================================
+// GROCERY / PURCHASE ITEMS
+// ============================================================================
+
+const STORAGE_KEY_GROCERY = 'zenremind_grocery_v1';
+
+export const fetchGroceryItems = async (userId: string | null): Promise<GroceryItem[]> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const saved = localStorage.getItem(STORAGE_KEY_GROCERY);
+    return saved ? JSON.parse(saved) : [];
+  }
+  try {
+    const { data, error } = await supabase
+      .from('grocery_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('purchased_at', { ascending: false });
+    if (error) throw error;
+    const items = (data || []).map((d: any) => ({
+      id: d.id,
+      name: d.name,
+      category: d.category,
+      foodType: d.food_type ?? undefined,
+      price: d.price ?? undefined,
+      quantity: d.quantity,
+      store: d.store ?? undefined,
+      purchasedAt: d.purchased_at,
+      createdAt: d.created_at,
+    }));
+    localStorage.setItem(STORAGE_KEY_GROCERY, JSON.stringify(items));
+    return items;
+  } catch (error) {
+    console.error('Error fetching grocery items:', error);
+    const saved = localStorage.getItem(STORAGE_KEY_GROCERY);
+    return saved ? JSON.parse(saved) : [];
+  }
+};
+
+export const saveGroceryItem = async (userId: string | null, item: GroceryItem): Promise<void> => {
+  // Always save locally first
+  const local: GroceryItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY_GROCERY) || '[]');
+  const exists = local.find(i => i.id === item.id);
+  localStorage.setItem(STORAGE_KEY_GROCERY, JSON.stringify(
+    exists ? local.map(i => i.id === item.id ? item : i) : [item, ...local]
+  ));
+
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('grocery_items').upsert({
+      id: item.id,
+      user_id: userId,
+      name: item.name,
+      category: item.category,
+      food_type: item.foodType ?? null,
+      price: item.price ?? null,
+      quantity: item.quantity,
+      store: item.store ?? null,
+      purchased_at: item.purchasedAt,
+      created_at: item.createdAt,
+    }, { onConflict: 'id' });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving grocery item:', error);
+    throw error;
+  }
+};
+
+export const deleteGroceryItem = async (userId: string | null, itemId: string): Promise<void> => {
+  const local: GroceryItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY_GROCERY) || '[]');
+  localStorage.setItem(STORAGE_KEY_GROCERY, JSON.stringify(local.filter(i => i.id !== itemId)));
+
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('grocery_items').delete().eq('id', itemId).eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting grocery item:', error);
   }
 };

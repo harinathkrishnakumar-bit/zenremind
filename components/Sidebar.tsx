@@ -22,6 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, stats }) =>
     { id: ViewType.OUTSTANDING, label: 'Birthdays', icon: 'cake' as const, count: stats.outstanding },
     { id: ViewType.HABITS, label: 'Habits', icon: 'star' as const, count: stats.habits },
     { id: ViewType.VAULT, label: 'Info Vault', icon: 'alert' as const },
+    { id: ViewType.PURCHASES, label: 'Purchases', icon: 'list' as const },
   ];
 
   return (
