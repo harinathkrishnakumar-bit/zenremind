@@ -305,18 +305,30 @@ const App: React.FC = () => {
 
   // Vault handlers
   const handleAddVaultItem = async (item: VaultItem) => {
-    await saveVaultItem(user?.id || null, item);
     setVaultItems(prev => [item, ...prev]);
+    try {
+      await saveVaultItem(user?.id || null, item);
+    } catch (error) {
+      console.error('Failed to save vault item:', error);
+    }
   };
 
   const handleUpdateVaultItem = async (item: VaultItem) => {
-    await saveVaultItem(user?.id || null, item);
     setVaultItems(prev => prev.map(v => v.id === item.id ? item : v));
+    try {
+      await saveVaultItem(user?.id || null, item);
+    } catch (error) {
+      console.error('Failed to update vault item:', error);
+    }
   };
 
   const handleDeleteVaultItem = async (id: string) => {
-    await deleteVaultItem(user?.id || null, id);
     setVaultItems(prev => prev.filter(v => v.id !== id));
+    try {
+      await deleteVaultItem(user?.id || null, id);
+    } catch (error) {
+      console.error('Failed to delete vault item:', error);
+    }
   };
 
   // Today's events for dashboard
