@@ -55,19 +55,19 @@ export const parseSmartReminder = async (input: string): Promise<Partial<SmartRe
   }
 };
 
-export const parseReceiptImage = async (base64Data: string, mimeType: string): Promise<Partial<GroceryItem>[]> => {
+// Returns null if no API key, throws on API error, returns [] if image has no items
+export const parseReceiptImage = async (base64Data: string, mimeType: string): Promise<Partial<GroceryItem>[] | null> => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) return [];
+  if (!apiKey) return null;
 
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: [{
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType, data: base64Data } },
-          { text: `Extract all purchased items from this shopping receipt image.
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: [{
+      role: 'user',
+      parts: [
+        { inlineData: { mimeType, data: base64Data } },
+        { text: `Extract all purchased items from this shopping receipt image.
 For each item provide:
 - name: product name (string)
 - category: one of "Food", "Household", "Toys", "Personal Care", "Electronics", "Other"
@@ -75,32 +75,28 @@ For each item provide:
 - price: numeric price if visible, else null
 - quantity: integer quantity, default 1
 Return a JSON array of objects.` }
-        ]
-      }],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              category: { type: Type.STRING },
-              foodType: { type: Type.STRING },
-              price: { type: Type.NUMBER },
-              quantity: { type: Type.INTEGER },
-            },
-            required: ['name', 'category']
-          }
+      ]
+    }],
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            category: { type: Type.STRING },
+            foodType: { type: Type.STRING },
+            price: { type: Type.NUMBER },
+            quantity: { type: Type.INTEGER },
+          },
+          required: ['name', 'category']
         }
       }
-    });
+    }
+  });
 
-    const text = response.text;
-    if (!text) return [];
-    return JSON.parse(text);
-  } catch (error) {
-    console.error('Receipt parsing error:', error);
-    return [];
-  }
+  const text = response.text;
+  if (!text) return [];
+  return JSON.parse(text);
 };

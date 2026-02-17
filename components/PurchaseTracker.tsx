@@ -157,15 +157,18 @@ const PurchaseTracker: React.FC<PurchaseTrackerProps> = ({ items, onSaveItems, o
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
-          resolve(result.split(',')[1]); // strip data:...;base64,
+          resolve(result.split(',')[1]);
         };
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
 
       const extracted = await parseReceiptImage(base64, file.type || 'image/jpeg');
-      if (extracted.length === 0) {
-        setScanError('Could not extract items. Try a clearer photo or add items manually.');
+
+      if (extracted === null) {
+        setScanError('No Gemini API key found. Add API_KEY to your Vercel Environment Variables and redeploy.');
+      } else if (extracted.length === 0) {
+        setScanError('No items detected. Gemini processed the image but found no receipt items — try a different angle or better lighting.');
       } else {
         setScannedItems(extracted.map((e, i) => ({
           tempId: i + Date.now().toString(),
@@ -176,8 +179,10 @@ const PurchaseTracker: React.FC<PurchaseTrackerProps> = ({ items, onSaveItems, o
           quantity: e.quantity != null ? String(e.quantity) : '1',
         })));
       }
-    } catch {
-      setScanError('Scan failed. Check your Gemini API key or try again.');
+    } catch (error: any) {
+      const msg = error?.message || String(error);
+      console.error('Receipt scan error:', error);
+      setScanError(`Scan failed: ${msg}`);
     } finally {
       setIsScanning(false);
       if (fileRef.current) fileRef.current.value = '';
