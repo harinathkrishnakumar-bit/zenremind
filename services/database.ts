@@ -202,10 +202,18 @@ export const deleteHabit = async (userId: string | null, habitId: string): Promi
 // VAULT ITEMS
 // ============================================================================
 
+const localVaultGet = (): VaultItem[] => {
+  const saved = localStorage.getItem(STORAGE_KEY_VAULT);
+  return saved ? JSON.parse(saved) : [];
+};
+
+const localVaultSet = (items: VaultItem[]) => {
+  localStorage.setItem(STORAGE_KEY_VAULT, JSON.stringify(items));
+};
+
 export const fetchVaultItems = async (userId: string | null): Promise<VaultItem[]> => {
   if (!isSupabaseConfigured() || !userId) {
-    const saved = localStorage.getItem(STORAGE_KEY_VAULT);
-    return saved ? JSON.parse(saved) : [];
+    return localVaultGet();
   }
 
   try {
@@ -216,28 +224,30 @@ export const fetchVaultItems = async (userId: string | null): Promise<VaultItem[
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return (data || []).map((d: any) => ({
+    const items = (data || []).map((d: any) => ({
       id: d.id,
       label: d.label,
       value: d.value,
       category: d.category,
       createdAt: d.created_at,
     }));
+    // Update local cache with cloud data
+    localVaultSet(items);
+    return items;
   } catch (error) {
     console.error('Error fetching vault items:', error);
-    const saved = localStorage.getItem(STORAGE_KEY_VAULT);
-    return saved ? JSON.parse(saved) : [];
+    // Fall back to local cache
+    return localVaultGet();
   }
 };
 
 export const saveVaultItem = async (userId: string | null, item: VaultItem): Promise<void> => {
-  if (!isSupabaseConfigured() || !userId) {
-    const items = await fetchVaultItems(null);
-    const existing = items.find(i => i.id === item.id);
-    const updated = existing ? items.map(i => i.id === item.id ? item : i) : [...items, item];
-    localStorage.setItem(STORAGE_KEY_VAULT, JSON.stringify(updated));
-    return;
-  }
+  // Always update local cache first
+  const local = localVaultGet();
+  const existing = local.find(i => i.id === item.id);
+  localVaultSet(existing ? local.map(i => i.id === item.id ? item : i) : [item, ...local]);
+
+  if (!isSupabaseConfigured() || !userId) return;
 
   try {
     const { error } = await supabase.from('vault_items').upsert({
@@ -251,17 +261,16 @@ export const saveVaultItem = async (userId: string | null, item: VaultItem): Pro
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error saving vault item:', error);
-    throw error;
+    console.error('Error saving vault item to Supabase:', error);
+    throw error; // Re-throw so caller can show sync warning
   }
 };
 
 export const deleteVaultItem = async (userId: string | null, itemId: string): Promise<void> => {
-  if (!isSupabaseConfigured() || !userId) {
-    const items = await fetchVaultItems(null);
-    localStorage.setItem(STORAGE_KEY_VAULT, JSON.stringify(items.filter(i => i.id !== itemId)));
-    return;
-  }
+  // Always update local cache first
+  localVaultSet(localVaultGet().filter(i => i.id !== itemId));
+
+  if (!isSupabaseConfigured() || !userId) return;
 
   try {
     const { error } = await supabase
@@ -272,7 +281,7 @@ export const deleteVaultItem = async (userId: string | null, itemId: string): Pr
 
     if (error) throw error;
   } catch (error) {
-    console.error('Error deleting vault item:', error);
+    console.error('Error deleting vault item from Supabase:', error);
     throw error;
   }
 };

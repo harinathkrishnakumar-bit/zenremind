@@ -304,21 +304,27 @@ const App: React.FC = () => {
   };
 
   // Vault handlers
+  const [vaultSyncError, setVaultSyncError] = useState('');
+
   const handleAddVaultItem = async (item: VaultItem) => {
     setVaultItems(prev => [item, ...prev]);
+    setVaultSyncError('');
     try {
       await saveVaultItem(user?.id || null, item);
     } catch (error) {
-      console.error('Failed to save vault item:', error);
+      console.error('Failed to save vault item to cloud:', error);
+      setVaultSyncError('⚠️ Cloud sync failed — saved locally. Make sure the vault_items table exists in Supabase.');
     }
   };
 
   const handleUpdateVaultItem = async (item: VaultItem) => {
     setVaultItems(prev => prev.map(v => v.id === item.id ? item : v));
+    setVaultSyncError('');
     try {
       await saveVaultItem(user?.id || null, item);
     } catch (error) {
-      console.error('Failed to update vault item:', error);
+      console.error('Failed to update vault item in cloud:', error);
+      setVaultSyncError('⚠️ Cloud sync failed — saved locally. Make sure the vault_items table exists in Supabase.');
     }
   };
 
@@ -327,7 +333,7 @@ const App: React.FC = () => {
     try {
       await deleteVaultItem(user?.id || null, id);
     } catch (error) {
-      console.error('Failed to delete vault item:', error);
+      console.error('Failed to delete vault item from cloud:', error);
     }
   };
 
@@ -689,6 +695,7 @@ const App: React.FC = () => {
                 onAdd={handleAddVaultItem}
                 onUpdate={handleUpdateVaultItem}
                 onDelete={handleDeleteVaultItem}
+                syncError={vaultSyncError}
               />
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

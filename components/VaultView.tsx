@@ -7,6 +7,7 @@ interface VaultViewProps {
   onAdd: (item: VaultItem) => void;
   onDelete: (id: string) => void;
   onUpdate: (item: VaultItem) => void;
+  syncError?: string;
 }
 
 const VAULT_CATEGORIES = [
@@ -29,7 +30,7 @@ const categoryColor: Record<string, string> = {
   Other: 'bg-gray-50 border-gray-200 text-gray-700',
 };
 
-const VaultView: React.FC<VaultViewProps> = ({ items, onAdd, onDelete, onUpdate }) => {
+const VaultView: React.FC<VaultViewProps> = ({ items, onAdd, onDelete, onUpdate, syncError }) => {
   const [showForm, setShowForm] = useState(false);
   const [label, setLabel] = useState('');
   const [value, setValue] = useState('');
@@ -102,6 +103,13 @@ const VaultView: React.FC<VaultViewProps> = ({ items, onAdd, onDelete, onUpdate 
           <span>Add Info</span>
         </button>
       </div>
+
+      {/* Sync error banner */}
+      {syncError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-3 text-xs font-bold text-red-700">
+          {syncError}
+        </div>
+      )}
 
       {/* Add / Edit Form */}
       {showForm && (
