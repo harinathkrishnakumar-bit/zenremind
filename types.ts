@@ -17,7 +17,8 @@ export enum ViewType {
   WORKS = 'WORKS',
   RENEWALS = 'RENEWALS',
   VAULT = 'VAULT',
-  PURCHASES = 'PURCHASES'
+  PURCHASES = 'PURCHASES',
+  HOMEWORK = 'HOMEWORK'
 }
 
 export enum RecurrenceType {
@@ -78,6 +79,18 @@ export interface GroceryItem {
   quantity: number;
   store?: string;
   purchasedAt: string;
+  createdAt: string;
+}
+
+export type HomeworkSubject = 'Math' | 'English' | 'Science' | 'History' | 'Geography' | 'Art' | 'PE' | 'French' | 'ICT' | 'Other';
+
+export interface HomeworkItem {
+  id: string;
+  title: string;
+  subject: HomeworkSubject;
+  dueDate: string; // YYYY-MM-DD
+  notes?: string;
+  completed: boolean;
   createdAt: string;
 }
 

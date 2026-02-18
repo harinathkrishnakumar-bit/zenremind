@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Reminder, Habit, VaultItem, GroceryItem } from '../types';
+import { Reminder, Habit, VaultItem, GroceryItem, HomeworkItem } from '../types';
 
 const STORAGE_KEY_REMINDERS = 'zenremind_pro_v3_final_renewals';
 const STORAGE_KEY_HABITS = 'zenremind_habits_pro_v3_final_renewals';
@@ -363,5 +363,77 @@ export const deleteGroceryItem = async (userId: string | null, itemId: string): 
     if (error) throw error;
   } catch (error) {
     console.error('Error deleting grocery item:', error);
+  }
+};
+
+// ============================================================================
+// HOMEWORK
+// ============================================================================
+
+const STORAGE_KEY_HOMEWORK = 'zenremind_homework_v1';
+
+export const fetchHomeworkItems = async (userId: string | null): Promise<HomeworkItem[]> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const saved = localStorage.getItem(STORAGE_KEY_HOMEWORK);
+    return saved ? JSON.parse(saved) : [];
+  }
+  try {
+    const { data, error } = await supabase
+      .from('homework_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('due_date', { ascending: true });
+    if (error) throw error;
+    const items = (data || []).map((d: any) => ({
+      id: d.id,
+      title: d.title,
+      subject: d.subject,
+      dueDate: d.due_date,
+      notes: d.notes ?? undefined,
+      completed: d.completed,
+      createdAt: d.created_at,
+    }));
+    localStorage.setItem(STORAGE_KEY_HOMEWORK, JSON.stringify(items));
+    return items;
+  } catch (error) {
+    console.error('Error fetching homework items:', error);
+    const saved = localStorage.getItem(STORAGE_KEY_HOMEWORK);
+    return saved ? JSON.parse(saved) : [];
+  }
+};
+
+export const saveHomeworkItem = async (userId: string | null, item: HomeworkItem): Promise<void> => {
+  const local: HomeworkItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY_HOMEWORK) || '[]');
+  const exists = local.find(i => i.id === item.id);
+  localStorage.setItem(STORAGE_KEY_HOMEWORK, JSON.stringify(
+    exists ? local.map(i => i.id === item.id ? item : i) : [item, ...local]
+  ));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('homework_items').upsert({
+      id: item.id,
+      user_id: userId,
+      title: item.title,
+      subject: item.subject,
+      due_date: item.dueDate,
+      notes: item.notes ?? null,
+      completed: item.completed,
+      created_at: item.createdAt,
+    }, { onConflict: 'id' });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving homework item:', error);
+  }
+};
+
+export const deleteHomeworkItem = async (userId: string | null, itemId: string): Promise<void> => {
+  const local: HomeworkItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY_HOMEWORK) || '[]');
+  localStorage.setItem(STORAGE_KEY_HOMEWORK, JSON.stringify(local.filter(i => i.id !== itemId)));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('homework_items').delete().eq('id', itemId).eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting homework item:', error);
   }
 };

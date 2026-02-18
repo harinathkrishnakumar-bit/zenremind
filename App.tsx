@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem } from './types';
+import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem, HomeworkItem } from './types';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import ReminderCard from './components/ReminderCard';
@@ -7,11 +7,12 @@ import ReminderModal from './components/ReminderModal';
 import HabitTracker from './components/HabitTracker';
 import VaultView from './components/VaultView';
 import PurchaseTracker from './components/PurchaseTracker';
+import HomeworkPlanner from './components/HomeworkPlanner';
 import { Icon } from './components/Icon';
 import { isToday, isThisWeek, isThisMonth } from './utils/dateUtils';
 import { getOccurrencesInRange } from './utils/recurrenceUtils';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem } from './services/database';
+import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem, fetchHomeworkItems, saveHomeworkItem, deleteHomeworkItem } from './services/database';
 
 const DASHBOARD_INTERVAL = 15000;
 const STANDARD_INTERVAL = 8000;
@@ -25,6 +26,7 @@ const App: React.FC = () => {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
   const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([]);
+  const [homeworkItems, setHomeworkItems] = useState<HomeworkItem[]>([]);
   const [activeView, setActiveView] = useState<ViewType>(ViewType.DASHBOARD);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -62,16 +64,18 @@ const App: React.FC = () => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [reminderData, habitData, vaultData, groceryData] = await Promise.all([
+        const [reminderData, habitData, vaultData, groceryData, homeworkData] = await Promise.all([
           fetchReminders(user?.id || null),
           fetchHabits(user?.id || null),
           fetchVaultItems(user?.id || null),
           fetchGroceryItems(user?.id || null),
+          fetchHomeworkItems(user?.id || null),
         ]);
         setReminders(reminderData);
         setHabits(habitData);
         setVaultItems(vaultData);
         setGroceryItems(groceryData);
+        setHomeworkItems(homeworkData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -341,6 +345,24 @@ const App: React.FC = () => {
     }
   };
 
+  // Homework handlers
+  const handleSaveHomework = async (item: HomeworkItem) => {
+    setHomeworkItems(prev => prev.some(h => h.id === item.id) ? prev.map(h => h.id === item.id ? item : h) : [item, ...prev]);
+    await saveHomeworkItem(user?.id || null, item);
+  };
+
+  const handleDeleteHomework = async (id: string) => {
+    setHomeworkItems(prev => prev.filter(h => h.id !== id));
+    await deleteHomeworkItem(user?.id || null, id);
+  };
+
+  const handleToggleHomework = async (id: string) => {
+    const updated = homeworkItems.map(h => h.id === id ? { ...h, completed: !h.completed } : h);
+    setHomeworkItems(updated);
+    const item = updated.find(h => h.id === id);
+    if (item) await saveHomeworkItem(user?.id || null, item);
+  };
+
   // Grocery/Purchase handlers
   const handleSaveGroceryItems = async (items: GroceryItem[]) => {
     setGroceryItems(prev => {
@@ -393,7 +415,7 @@ const App: React.FC = () => {
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 z-20">
           <div className="flex items-center gap-2">
             <h2 className="text-sm sm:text-lg font-black text-gray-800 tracking-tight truncate">
-              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView.replace(/_/g, ' ')}
+              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView === ViewType.HOMEWORK ? "Riya's Homework" : activeView.replace(/_/g, ' ')}
             </h2>
           </div>
 
@@ -722,6 +744,13 @@ const App: React.FC = () => {
                 items={groceryItems}
                 onSaveItems={handleSaveGroceryItems}
                 onDeleteItem={handleDeleteGroceryItem}
+              />
+            ) : activeView === ViewType.HOMEWORK ? (
+              <HomeworkPlanner
+                items={homeworkItems}
+                onSave={handleSaveHomework}
+                onDelete={handleDeleteHomework}
+                onToggleComplete={handleToggleHomework}
               />
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
