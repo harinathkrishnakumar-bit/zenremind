@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem, HomeworkItem } from './types';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
@@ -32,6 +32,7 @@ const App: React.FC = () => {
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [timeLeft, setTimeLeft] = useState(getIntervalForView(ViewType.DASHBOARD));
   const [isPaused, setIsPaused] = useState(false);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Authentication state
   const [user, setUser] = useState<any>(null);
@@ -57,6 +58,22 @@ const App: React.FC = () => {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Pause auto-cycle on any user activity; resume after 60s of inactivity
+  useEffect(() => {
+    const INACTIVITY_MS = 60000;
+    const handleActivity = () => {
+      setIsPaused(true);
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = setTimeout(() => setIsPaused(false), INACTIVITY_MS);
+    };
+    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'] as const;
+    events.forEach(e => document.addEventListener(e, handleActivity, { passive: true }));
+    return () => {
+      events.forEach(e => document.removeEventListener(e, handleActivity));
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    };
   }, []);
 
   // Load data when user changes
@@ -411,7 +428,7 @@ const App: React.FC = () => {
         <Sidebar activeView={activeView} onViewChange={(v) => { setActiveView(v); setTimeLeft(getIntervalForView(v)); }} stats={stats} isOpen={true} onClose={()=>{}} />
       </div>
 
-      <main className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0 h-full overflow-hidden" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
+      <main className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0 h-full overflow-hidden">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 z-20">
           <div className="flex items-center gap-2">
             <h2 className="text-sm sm:text-lg font-black text-gray-800 tracking-tight truncate">
@@ -453,73 +470,6 @@ const App: React.FC = () => {
                     </div>
                   ))}
                 </div>
-
-                {/* Auth Card */}
-                {isSupabaseConfigured() && (
-                  <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
-                    <h3 className="text-xl font-black text-gray-900 mb-1">☁️ Cloud Sync</h3>
-                    <p className="text-gray-500 text-xs mb-4">Sync your data across all devices</p>
-
-                    <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                      {authLoading ? (
-                        <p className="text-xs text-gray-500">Checking login status...</p>
-                      ) : user ? (
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">✓ Synced</p>
-                            <p className="text-sm font-black text-gray-800 truncate">{user.email}</p>
-                          </div>
-                          <button
-                            onClick={handleLogout}
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors"
-                          >
-                            Sign Out
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
-                            <button
-                              onClick={() => { setAuthMode('signin'); setAuthError(''); setAuthSuccess(''); }}
-                              className={`flex-1 py-1.5 text-xs font-black rounded-md transition-all ${authMode === 'signin' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}
-                            >Sign In</button>
-                            <button
-                              onClick={() => { setAuthMode('signup'); setAuthError(''); setAuthSuccess(''); }}
-                              className={`flex-1 py-1.5 text-xs font-black rounded-md transition-all ${authMode === 'signup' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}
-                            >Create Account</button>
-                          </div>
-                          <input
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:border-orange-400"
-                            type="email"
-                            placeholder="Email address"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-                          />
-                          <input
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:border-orange-400"
-                            type="password"
-                            placeholder="Password (min 6 characters)"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-                          />
-                          {authError && <p className="text-[10px] text-red-500 font-bold">{authError}</p>}
-                          {authSuccess && <p className="text-[10px] text-emerald-600 font-bold">{authSuccess}</p>}
-                          <button
-                            onClick={handleAuth}
-                            disabled={authLoading}
-                            className="py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition-colors disabled:opacity-50"
-                          >
-                            {authLoading ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}
-                          </button>
-                          <p className="text-[10px] text-gray-400 text-center">Use the same email + password on all devices</p>
-                        </div>
-                      )}
-                      {!user && <span />}
-                    </div>
-                  </div>
-                )}
 
                 {/* Today's Events */}
                 <div className="bg-white border-2 border-blue-50 rounded-[2.5rem] shadow-xl shadow-blue-500/5 overflow-hidden border-t-blue-500 border-t-8">
@@ -655,6 +605,40 @@ const App: React.FC = () => {
                   onDeleteHabit={handleDeleteHabit}
                   onToggleDate={handleToggleHabitDate}
                 />
+
+                {/* Auth Card — bottom of dashboard */}
+                {isSupabaseConfigured() && (
+                  <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-sm">
+                    <h3 className="text-xl font-black text-gray-900 mb-1">☁️ Cloud Sync</h3>
+                    <p className="text-gray-500 text-xs mb-4">Sync your data across all devices</p>
+                    <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                      {authLoading ? (
+                        <p className="text-xs text-gray-500">Checking login status...</p>
+                      ) : user ? (
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">✓ Synced</p>
+                            <p className="text-sm font-black text-gray-800 truncate">{user.email}</p>
+                          </div>
+                          <button onClick={handleLogout} className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors">Sign Out</button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+                            <button onClick={() => { setAuthMode('signin'); setAuthError(''); setAuthSuccess(''); }} className={`flex-1 py-1.5 text-xs font-black rounded-md transition-all ${authMode === 'signin' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}>Sign In</button>
+                            <button onClick={() => { setAuthMode('signup'); setAuthError(''); setAuthSuccess(''); }} className={`flex-1 py-1.5 text-xs font-black rounded-md transition-all ${authMode === 'signup' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}>Create Account</button>
+                          </div>
+                          <input className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:border-orange-400" type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAuth()} />
+                          <input className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold outline-none focus:border-orange-400" type="password" placeholder="Password (min 6 characters)" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAuth()} />
+                          {authError && <p className="text-[10px] text-red-500 font-bold">{authError}</p>}
+                          {authSuccess && <p className="text-[10px] text-emerald-600 font-bold">{authSuccess}</p>}
+                          <button onClick={handleAuth} disabled={authLoading} className="py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition-colors disabled:opacity-50">{authLoading ? 'Please wait...' : authMode === 'signup' ? 'Create Account' : 'Sign In'}</button>
+                          <p className="text-[10px] text-gray-400 text-center">Use the same email + password on all devices</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : activeView === ViewType.RENEWALS ? (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
