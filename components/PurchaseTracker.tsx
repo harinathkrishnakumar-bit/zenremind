@@ -282,7 +282,17 @@ const PurchaseTracker: React.FC<PurchaseTrackerProps> = ({ items, onSaveItems, o
     filteredItems.forEach(i => { if (i.store) storeMap[i.store] = (storeMap[i.store] || 0) + i.quantity; });
     const topStores = Object.entries(storeMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-    return { totalItems, totalSpend, stores, foodHealth, totalFood, healthScore, catSpend, weeks, topStores };
+    // Top 5 processed & ultraprocessed food items by name
+    const processedMap: Record<string, number> = {};
+    const ultraMap: Record<string, number> = {};
+    foodItems.forEach(i => {
+      if (i.foodType === 'Processed') processedMap[i.name] = (processedMap[i.name] || 0) + i.quantity;
+      else if (i.foodType === 'Ultraprocessed') ultraMap[i.name] = (ultraMap[i.name] || 0) + i.quantity;
+    });
+    const topProcessed = Object.entries(processedMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topUltraprocessed = Object.entries(ultraMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    return { totalItems, totalSpend, stores, foodHealth, totalFood, healthScore, catSpend, weeks, topStores, topProcessed, topUltraprocessed };
   }, [filteredItems]);
 
   const maxWeek = Math.max(...reportStats.weeks.map(w => w.count), 1);
@@ -554,6 +564,58 @@ const PurchaseTracker: React.FC<PurchaseTrackerProps> = ({ items, onSaveItems, o
                           </span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Top Processed & Ultraprocessed */}
+              {(reportStats.topProcessed.length > 0 || reportStats.topUltraprocessed.length > 0) && (
+                <div className="bg-white border border-gray-200 rounded-3xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-lg">⚠️</span>
+                    <h3 className="text-sm font-black text-gray-800">Top Processed &amp; Ultraprocessed Foods</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {/* Processed */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
+                        <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Processed</p>
+                      </div>
+                      {reportStats.topProcessed.length === 0 ? (
+                        <p className="text-[10px] text-gray-300 font-bold italic">None in this period</p>
+                      ) : (
+                        <ol className="space-y-2">
+                          {reportStats.topProcessed.map(([name, count], idx) => (
+                            <li key={name} className="flex items-center gap-2">
+                              <span className="text-[10px] font-black text-amber-400 w-4 shrink-0">#{idx + 1}</span>
+                              <span className="flex-1 text-xs font-bold text-gray-700 truncate">{name}</span>
+                              <span className="text-[10px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full shrink-0">×{count}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </div>
+                    {/* Ultraprocessed */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                        <p className="text-[10px] font-black text-red-700 uppercase tracking-widest">Ultraprocessed</p>
+                      </div>
+                      {reportStats.topUltraprocessed.length === 0 ? (
+                        <p className="text-[10px] text-gray-300 font-bold italic">None in this period</p>
+                      ) : (
+                        <ol className="space-y-2">
+                          {reportStats.topUltraprocessed.map(([name, count], idx) => (
+                            <li key={name} className="flex items-center gap-2">
+                              <span className="text-[10px] font-black text-red-400 w-4 shrink-0">#{idx + 1}</span>
+                              <span className="flex-1 text-xs font-bold text-gray-700 truncate">{name}</span>
+                              <span className="text-[10px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-full shrink-0">×{count}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
                     </div>
                   </div>
                 </div>
