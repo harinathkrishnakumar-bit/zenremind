@@ -19,7 +19,8 @@ const CATEGORIES = [
   { id: 'Classes', icon: 'target' },
   { id: 'Work', icon: 'calendar' },
   { id: 'Health', icon: 'alert' },
-  { id: 'Finance', icon: 'star' }
+  { id: 'Finance', icon: 'star' },
+  { id: 'Meetup', icon: 'users' },
 ];
 
 const TIMELESS_CATEGORIES = ['Personal', 'Things to Buy', 'Work', 'Health', 'Finance'];
