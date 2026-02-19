@@ -21,31 +21,31 @@ const ReminderCard: React.FC<ReminderCardProps> = ({
 }) => {
   if (isCompact) {
     return (
-      <div className={`group flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all ${reminder.completed ? 'opacity-50 bg-gray-50/30' : ''}`}>
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <button 
-            onClick={() => onToggleComplete(reminder.id)}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-emerald-100 transition-all flex-shrink-0"
-          >
-            <Icon name="check" className="w-3.5 h-3.5" /> 
-            <span>Complete</span>
-          </button>
-          <div className="flex flex-1 justify-between items-center pr-4">
-            <span className={`text-sm font-semibold truncate ${reminder.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-              {reminder.title}
-            </span>
-            {reminder.cost !== undefined && (
-              <span className="text-sm font-bold text-orange-600 ml-4">
-                ${reminder.cost.toFixed(2)}
-              </span>
-            )}
+      <div className={`group px-4 py-3 bg-white border border-gray-100 rounded-xl hover:shadow-sm transition-all ${reminder.completed ? 'opacity-50 bg-gray-50/30' : ''}`}>
+        {/* Row 1: title + Done + delete */}
+        <div className="flex items-center gap-2">
+          <span className={`flex-1 text-sm font-semibold truncate ${reminder.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+            {reminder.title}
+          </span>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => onDelete(reminder.id)} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+              <Icon name="trash" className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onToggleComplete(reminder.id)}
+              className="px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 hover:bg-emerald-100 transition-all"
+            >
+              <Icon name="check" className="w-3.5 h-3.5" />
+              <span>Done</span>
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={() => onDelete(reminder.id)} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors">
-            <Icon name="trash" className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Row 2: cost (if present) */}
+        {reminder.cost !== undefined && (
+          <div className="mt-1 text-[10px] font-bold text-orange-600">
+            ${reminder.cost.toFixed(2)}
+          </div>
+        )}
       </div>
     );
   }
