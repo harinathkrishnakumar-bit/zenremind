@@ -540,9 +540,10 @@ const App: React.FC = () => {
                       <div className="p-8 space-y-6">
                          {dashboardData.upcomingRenewals.length > 0 ? dashboardData.upcomingRenewals.map(e => (
                            <div key={e.id} className="flex gap-5 items-center p-4 rounded-[2rem] hover:bg-emerald-50/30 transition-all group">
-                              <div className="w-14 h-14 rounded-2xl bg-white border-2 border-emerald-100 flex flex-col items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform">
-                                 <span className="text-[10px] font-black text-emerald-600 uppercase mb-0.5">{new Date(e.dueDate).toLocaleString('default', { month: 'short' })}</span>
+                              <div className="w-16 h-16 rounded-2xl bg-white border-2 border-emerald-100 flex flex-col items-center justify-center shrink-0 shadow-md group-hover:scale-110 transition-transform">
+                                 <span className="text-[9px] font-black text-emerald-600 uppercase mb-0.5">{new Date(e.dueDate).toLocaleString('default', { month: 'short' })}</span>
                                  <span className="text-2xl font-black text-emerald-800 leading-none">{new Date(e.dueDate).getDate()}</span>
+                                 <span className="text-[9px] font-black text-emerald-400 mt-0.5">{new Date(e.dueDate).getFullYear()}</span>
                               </div>
                               <div className="flex-1 min-w-0">
                                  <p className="text-base font-black text-gray-800 truncate">{e.title}</p>
@@ -667,7 +668,7 @@ const App: React.FC = () => {
                              <div className="space-y-2">
                                 <div className="flex justify-between items-center text-xs">
                                    <span className="text-gray-400 font-bold uppercase tracking-widest">Due</span>
-                                   <span className="text-emerald-600 font-black">{new Date(r.dueDate).toLocaleDateString()}</span>
+                                   <span className="text-emerald-600 font-black">{new Date(r.dueDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                                 </div>
                                 <p className="text-sm text-gray-600 font-medium whitespace-pre-wrap leading-relaxed">{r.description || "No specific details added."}</p>
                              </div>
