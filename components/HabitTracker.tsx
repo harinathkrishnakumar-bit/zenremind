@@ -93,7 +93,7 @@ const HabitTracker: React.FC<HabitTrackerProps> = ({ habits, onToggleDate, onAdd
             <div key={habit.id} className="bg-white p-5 rounded-3xl border border-gray-200 shadow-sm hover:shadow-md transition-all group">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex flex-col">
-                  <h3 className="text-base font-black text-gray-800 tracking-tight">{habit.title}</h3>
+                  <h3 className="text-base font-black text-gray-900 tracking-tight">{habit.title}</h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     <div className="w-20 h-1 bg-gray-100 rounded-full overflow-hidden">
                       <div className="h-full bg-orange-500 transition-all duration-500" style={{ width: `${progress}%` }} />
