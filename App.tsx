@@ -460,13 +460,13 @@ const App: React.FC = () => {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     { label: 'Pending', val: stats.today + stats.works, color: 'orange', icon: 'clock' },
-                    { label: 'Habits', val: stats.habits, color: 'gray', icon: 'star' },
+                    { label: 'Habits', val: stats.habits, color: 'purple', icon: 'star' },
                     { label: 'Renewals', val: stats.renewals, color: 'emerald', icon: 'calendar' },
                     { label: 'Shopping', val: stats.shopping, color: 'blue', icon: 'list' }
                   ].map(s => (
-                    <div key={s.label} className={`p-5 bg-${s.color === 'gray' ? 'gray-800' : s.color + '-50'} border border-${s.color === 'gray' ? 'gray-900' : s.color + '-100'} rounded-3xl flex flex-col justify-center`}>
-                       <span className={`text-[10px] font-black uppercase tracking-widest ${s.color === 'gray' ? 'text-gray-400' : 'text-' + s.color + '-600'}`}>{s.label}</span>
-                       <span className={`text-3xl font-black ${s.color === 'gray' ? 'text-white' : 'text-' + s.color + '-700'}`}>{s.val}</span>
+                    <div key={s.label} className={`p-5 bg-${s.color}-50 border border-${s.color}-100 rounded-3xl flex flex-col justify-center`}>
+                       <span className={`text-[10px] font-black uppercase tracking-widest text-${s.color}-600`}>{s.label}</span>
+                       <span className={`text-3xl font-black text-${s.color}-700`}>{s.val}</span>
                     </div>
                   ))}
                 </div>
