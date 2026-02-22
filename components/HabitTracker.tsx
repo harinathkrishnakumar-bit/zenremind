@@ -12,19 +12,19 @@ interface HabitTrackerProps {
 const HabitTracker: React.FC<HabitTrackerProps> = ({ habits, onToggleDate, onAddHabit, onDeleteHabit }) => {
   const [newHabitTitle, setNewHabitTitle] = useState('');
 
-  // Timeline: today is FIRST (index 0), then next 13 days so you see what's upcoming
+  // Timeline: past 13 days + today, so you can track your history
   const habitTimeline = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     return Array.from({ length: 14 }, (_, i) => {
       const d = new Date();
-      d.setDate(d.getDate() + i);
+      d.setDate(d.getDate() - (13 - i)); // 13 days ago to today
       const dateStr = d.toISOString().split('T')[0];
       return {
         full: dateStr,
         weekday: d.toLocaleDateString('en-US', { weekday: 'narrow' }),
         date: d.getDate(),
         isToday: dateStr === todayStr,
-        isFuture: i > 0,
+        isPast: i < 13,
       };
     });
   }, []);
@@ -118,7 +118,7 @@ const HabitTracker: React.FC<HabitTrackerProps> = ({ habits, onToggleDate, onAdd
                     return (
                       <div key={day.full} className="flex flex-col items-center gap-1.5">
                         <span className={`text-[8px] font-black uppercase tracking-tighter ${
-                          day.isToday ? 'text-orange-500' : day.isFuture ? 'text-gray-200' : 'text-gray-300'
+                          day.isToday ? 'text-orange-500' : 'text-gray-400'
                         }`}>
                           {day.isToday ? 'NOW' : day.weekday}
                         </span>
@@ -130,9 +130,7 @@ const HabitTracker: React.FC<HabitTrackerProps> = ({ habits, onToggleDate, onAdd
                               ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100 scale-110'
                               : day.isToday
                                 ? 'border-orange-400 bg-white text-orange-500 hover:bg-orange-50'
-                                : day.isFuture
-                                  ? 'bg-gray-50 border-gray-100 text-gray-200 hover:border-orange-200'
-                                  : 'bg-white border-gray-200 text-gray-300'
+                                : 'bg-white border-gray-200 text-gray-400 hover:border-orange-300'
                           }`}
                         >
                           {isCompleted

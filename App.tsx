@@ -453,7 +453,7 @@ const App: React.FC = () => {
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 z-20">
           <div className="flex items-center gap-2">
             <h2 className="text-sm sm:text-lg font-black text-gray-800 tracking-tight truncate">
-              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView === ViewType.HOMEWORK ? "Riya's Homework" : activeView.replace(/_/g, ' ')}
+              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView === ViewType.HOMEWORK ? "Riya's Homework" : activeView === ViewType.HABITS ? 'Habits' : activeView.replace(/_/g, ' ')}
             </h2>
           </div>
 
@@ -761,6 +761,13 @@ const App: React.FC = () => {
                 onSaveCurriculum={handleSaveCurriculum}
                 onDeleteCurriculum={handleDeleteCurriculum}
                 onToggleCurriculum={handleToggleCurriculum}
+              />
+            ) : activeView === ViewType.HABITS ? (
+              <HabitTracker
+                habits={habits}
+                onAddHabit={handleAddHabit}
+                onDeleteHabit={handleDeleteHabit}
+                onToggleDate={handleToggleHabitDate}
               />
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
