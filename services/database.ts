@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Reminder, Habit, VaultItem, GroceryItem, HomeworkItem } from '../types';
+import { Reminder, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic } from '../types';
 
 const STORAGE_KEY_REMINDERS = 'zenremind_pro_v3_final_renewals';
 const STORAGE_KEY_HABITS = 'zenremind_habits_pro_v3_final_renewals';
@@ -435,5 +435,77 @@ export const deleteHomeworkItem = async (userId: string | null, itemId: string):
     if (error) throw error;
   } catch (error) {
     console.error('Error deleting homework item:', error);
+  }
+};
+
+// ============================================================================
+// CURRICULUM TOPICS
+// ============================================================================
+
+const STORAGE_KEY_CURRICULUM = 'zenremind_curriculum_v1';
+
+export const fetchCurriculumTopics = async (userId: string | null): Promise<CurriculumTopic[]> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const saved = localStorage.getItem(STORAGE_KEY_CURRICULUM);
+    return saved ? JSON.parse(saved) : [];
+  }
+  try {
+    const { data, error } = await supabase
+      .from('curriculum_topics')
+      .select('*')
+      .eq('user_id', userId)
+      .order('subject', { ascending: true });
+    if (error) throw error;
+    const topics = (data || []).map((d: any) => ({
+      id: d.id,
+      subject: d.subject,
+      title: d.title,
+      completed: d.completed,
+      dueDate: d.due_date ?? undefined,
+      notes: d.notes ?? undefined,
+      createdAt: d.created_at,
+    }));
+    localStorage.setItem(STORAGE_KEY_CURRICULUM, JSON.stringify(topics));
+    return topics;
+  } catch (error) {
+    console.error('Error fetching curriculum topics:', error);
+    const saved = localStorage.getItem(STORAGE_KEY_CURRICULUM);
+    return saved ? JSON.parse(saved) : [];
+  }
+};
+
+export const saveCurriculumTopic = async (userId: string | null, topic: CurriculumTopic): Promise<void> => {
+  const local: CurriculumTopic[] = JSON.parse(localStorage.getItem(STORAGE_KEY_CURRICULUM) || '[]');
+  const exists = local.find(t => t.id === topic.id);
+  localStorage.setItem(STORAGE_KEY_CURRICULUM, JSON.stringify(
+    exists ? local.map(t => t.id === topic.id ? topic : t) : [topic, ...local]
+  ));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('curriculum_topics').upsert({
+      id: topic.id,
+      user_id: userId,
+      subject: topic.subject,
+      title: topic.title,
+      completed: topic.completed,
+      due_date: topic.dueDate ?? null,
+      notes: topic.notes ?? null,
+      created_at: topic.createdAt,
+    }, { onConflict: 'id' });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving curriculum topic:', error);
+  }
+};
+
+export const deleteCurriculumTopic = async (userId: string | null, topicId: string): Promise<void> => {
+  const local: CurriculumTopic[] = JSON.parse(localStorage.getItem(STORAGE_KEY_CURRICULUM) || '[]');
+  localStorage.setItem(STORAGE_KEY_CURRICULUM, JSON.stringify(local.filter(t => t.id !== topicId)));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('curriculum_topics').delete().eq('id', topicId).eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting curriculum topic:', error);
   }
 };

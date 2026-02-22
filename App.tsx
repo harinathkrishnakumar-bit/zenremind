@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem, HomeworkItem } from './types';
+import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic } from './types';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import ReminderCard from './components/ReminderCard';
@@ -12,7 +12,7 @@ import { Icon } from './components/Icon';
 import { isToday, isThisWeek, isThisMonth } from './utils/dateUtils';
 import { getOccurrencesInRange } from './utils/recurrenceUtils';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem, fetchHomeworkItems, saveHomeworkItem, deleteHomeworkItem } from './services/database';
+import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem, fetchHomeworkItems, saveHomeworkItem, deleteHomeworkItem, fetchCurriculumTopics, saveCurriculumTopic, deleteCurriculumTopic } from './services/database';
 
 const DASHBOARD_INTERVAL = 15000;
 const STANDARD_INTERVAL = 8000;
@@ -27,6 +27,7 @@ const App: React.FC = () => {
   const [vaultItems, setVaultItems] = useState<VaultItem[]>([]);
   const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([]);
   const [homeworkItems, setHomeworkItems] = useState<HomeworkItem[]>([]);
+  const [curriculumTopics, setCurriculumTopics] = useState<CurriculumTopic[]>([]);
   const [activeView, setActiveView] = useState<ViewType>(ViewType.DASHBOARD);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -81,18 +82,20 @@ const App: React.FC = () => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [reminderData, habitData, vaultData, groceryData, homeworkData] = await Promise.all([
+        const [reminderData, habitData, vaultData, groceryData, homeworkData, curriculumData] = await Promise.all([
           fetchReminders(user?.id || null),
           fetchHabits(user?.id || null),
           fetchVaultItems(user?.id || null),
           fetchGroceryItems(user?.id || null),
           fetchHomeworkItems(user?.id || null),
+          fetchCurriculumTopics(user?.id || null),
         ]);
         setReminders(reminderData);
         setHabits(habitData);
         setVaultItems(vaultData);
         setGroceryItems(groceryData);
         setHomeworkItems(homeworkData);
+        setCurriculumTopics(curriculumData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -378,6 +381,24 @@ const App: React.FC = () => {
     setHomeworkItems(updated);
     const item = updated.find(h => h.id === id);
     if (item) await saveHomeworkItem(user?.id || null, item);
+  };
+
+  // Curriculum handlers
+  const handleSaveCurriculum = async (topic: CurriculumTopic) => {
+    setCurriculumTopics(prev => prev.some(t => t.id === topic.id) ? prev.map(t => t.id === topic.id ? topic : t) : [topic, ...prev]);
+    await saveCurriculumTopic(user?.id || null, topic);
+  };
+
+  const handleDeleteCurriculum = async (id: string) => {
+    setCurriculumTopics(prev => prev.filter(t => t.id !== id));
+    await deleteCurriculumTopic(user?.id || null, id);
+  };
+
+  const handleToggleCurriculum = async (id: string) => {
+    const updated = curriculumTopics.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+    setCurriculumTopics(updated);
+    const topic = updated.find(t => t.id === id);
+    if (topic) await saveCurriculumTopic(user?.id || null, topic);
   };
 
   // Grocery/Purchase handlers
@@ -736,6 +757,10 @@ const App: React.FC = () => {
                 onSave={handleSaveHomework}
                 onDelete={handleDeleteHomework}
                 onToggleComplete={handleToggleHomework}
+                curriculumTopics={curriculumTopics}
+                onSaveCurriculum={handleSaveCurriculum}
+                onDeleteCurriculum={handleDeleteCurriculum}
+                onToggleCurriculum={handleToggleCurriculum}
               />
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

@@ -94,6 +94,16 @@ export interface HomeworkItem {
   createdAt: string;
 }
 
+export interface CurriculumTopic {
+  id: string;
+  subject: HomeworkSubject;
+  title: string;
+  completed: boolean;
+  dueDate?: string; // YYYY-MM-DD
+  notes?: string;
+  createdAt: string;
+}
+
 export interface SmartReminderResponse {
   title: string;
   description: string;

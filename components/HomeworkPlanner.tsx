@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { HomeworkItem, HomeworkSubject } from '../types';
+import { HomeworkItem, HomeworkSubject, CurriculumTopic } from '../types';
 import { Icon } from './Icon';
 
 interface HomeworkPlannerProps {
@@ -7,6 +7,10 @@ interface HomeworkPlannerProps {
   onSave: (item: HomeworkItem) => void;
   onDelete: (id: string) => void;
   onToggleComplete: (id: string) => void;
+  curriculumTopics: CurriculumTopic[];
+  onSaveCurriculum: (topic: CurriculumTopic) => void;
+  onDeleteCurriculum: (id: string) => void;
+  onToggleCurriculum: (id: string) => void;
 }
 
 const SUBJECTS: HomeworkSubject[] = ['Math', 'English', 'Science', 'History', 'Geography', 'Art', 'PE', 'French', 'ICT', 'Other'];
@@ -35,7 +39,11 @@ const daysUntil = (dateStr: string): number => {
 const formatDate = (dateStr: string) =>
   new Date(dateStr).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 
-const HomeworkPlanner: React.FC<HomeworkPlannerProps> = ({ items, onSave, onDelete, onToggleComplete }) => {
+const HomeworkPlanner: React.FC<HomeworkPlannerProps> = ({
+  items, onSave, onDelete, onToggleComplete,
+  curriculumTopics, onSaveCurriculum, onDeleteCurriculum, onToggleCurriculum
+}) => {
+  const [activeTab, setActiveTab] = useState<'homework' | 'curriculum'>('homework');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -43,6 +51,14 @@ const HomeworkPlanner: React.FC<HomeworkPlannerProps> = ({ items, onSave, onDele
   const [dueDate, setDueDate] = useState(todayStr());
   const [notes, setNotes] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
+
+  // Curriculum form state
+  const [showCurriculumForm, setShowCurriculumForm] = useState(false);
+  const [editingCurriculumId, setEditingCurriculumId] = useState<string | null>(null);
+  const [curriculumTitle, setCurriculumTitle] = useState('');
+  const [curriculumSubject, setCurriculumSubject] = useState<HomeworkSubject>('Math');
+  const [curriculumDueDate, setCurriculumDueDate] = useState('');
+  const [curriculumNotes, setCurriculumNotes] = useState('');
 
   const resetForm = () => {
     setTitle(''); setSubject('Math'); setDueDate(todayStr()); setNotes('');
@@ -70,6 +86,36 @@ const HomeworkPlanner: React.FC<HomeworkPlannerProps> = ({ items, onSave, onDele
     setNotes(item.notes || ''); setEditingId(item.id); setShowForm(true);
   };
 
+  // Curriculum handlers
+  const resetCurriculumForm = () => {
+    setCurriculumTitle(''); setCurriculumSubject('Math'); setCurriculumDueDate(''); setCurriculumNotes('');
+    setEditingCurriculumId(null); setShowCurriculumForm(false);
+  };
+
+  const handleCurriculumSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!curriculumTitle.trim()) return;
+    const topic: CurriculumTopic = {
+      id: editingCurriculumId || Date.now().toString(),
+      title: curriculumTitle.trim(),
+      subject: curriculumSubject,
+      completed: false,
+      dueDate: curriculumDueDate || undefined,
+      notes: curriculumNotes.trim() || undefined,
+      createdAt: editingCurriculumId
+        ? (curriculumTopics.find(t => t.id === editingCurriculumId)?.createdAt || new Date().toISOString())
+        : new Date().toISOString(),
+    };
+    onSaveCurriculum(topic);
+    resetCurriculumForm();
+  };
+
+  const startEditCurriculum = (topic: CurriculumTopic) => {
+    setCurriculumTitle(topic.title); setCurriculumSubject(topic.subject);
+    setCurriculumDueDate(topic.dueDate || ''); setCurriculumNotes(topic.notes || '');
+    setEditingCurriculumId(topic.id); setShowCurriculumForm(true);
+  };
+
   const pending = useMemo(() => items.filter(i => !i.completed).sort((a, b) => a.dueDate.localeCompare(b.dueDate)), [items]);
   const completed = useMemo(() => items.filter(i => i.completed).sort((a, b) => b.dueDate.localeCompare(a.dueDate)), [items]);
 
@@ -84,6 +130,33 @@ const HomeworkPlanner: React.FC<HomeworkPlannerProps> = ({ items, onSave, onDele
     overdue: overdue.length,
     today: dueToday.length,
     week: thisWeek.length,
+  };
+
+  // Curriculum data grouped by subject
+  const curriculumBySubject = useMemo(() => {
+    const grouped: Record<HomeworkSubject, CurriculumTopic[]> = {} as any;
+    SUBJECTS.forEach(s => { grouped[s] = []; });
+    curriculumTopics.forEach(topic => {
+      if (!grouped[topic.subject]) grouped[topic.subject] = [];
+      grouped[topic.subject].push(topic);
+    });
+    // Sort topics within each subject: incomplete first, then by due date
+    Object.keys(grouped).forEach(s => {
+      grouped[s as HomeworkSubject].sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return a.title.localeCompare(b.title);
+      });
+    });
+    return grouped;
+  }, [curriculumTopics]);
+
+  const curriculumStats = {
+    total: curriculumTopics.length,
+    completed: curriculumTopics.filter(t => t.completed).length,
+    subjects: Object.keys(curriculumBySubject).filter(s => curriculumBySubject[s as HomeworkSubject].length > 0).length,
   };
 
   const HomeworkCard: React.FC<{ item: HomeworkItem }> = ({ item }) => {
@@ -162,16 +235,51 @@ const HomeworkPlanner: React.FC<HomeworkPlannerProps> = ({ items, onSave, onDele
           <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">Planner & tracker</p>
         </div>
         <button
-          onClick={() => { resetForm(); setShowForm(true); }}
+          onClick={() => {
+            if (activeTab === 'homework') {
+              resetForm();
+              setShowForm(true);
+            } else {
+              resetCurriculumForm();
+              setShowCurriculumForm(true);
+            }
+          }}
           className="btn-primary px-4 py-2.5 rounded-xl flex items-center gap-2 font-bold text-sm self-start sm:self-auto"
         >
           <Icon name="plus" className="w-4 h-4" />
-          Add Homework
+          {activeTab === 'homework' ? 'Add Homework' : 'Add Topic'}
         </button>
       </div>
 
-      {/* Stats */}
-      {items.length > 0 && (
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('homework')}
+          className={`px-4 py-2.5 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'homework'
+              ? 'border-orange-500 text-orange-600'
+              : 'border-transparent text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Homework
+        </button>
+        <button
+          onClick={() => setActiveTab('curriculum')}
+          className={`px-4 py-2.5 text-sm font-bold transition-all border-b-2 ${
+            activeTab === 'curriculum'
+              ? 'border-orange-500 text-orange-600'
+              : 'border-transparent text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          Study Planner
+        </button>
+      </div>
+
+      {/* Homework Tab Content */}
+      {activeTab === 'homework' && (
+        <>
+          {/* Stats */}
+          {items.length > 0 && (
         <div className="grid grid-cols-4 gap-3">
           {[
             { label: 'Pending', val: stats.total, color: 'text-gray-700', bg: 'bg-gray-50 border-gray-100' },
@@ -356,6 +464,191 @@ const HomeworkPlanner: React.FC<HomeworkPlannerProps> = ({ items, onSave, onDele
             </div>
           )}
         </div>
+      )}
+        </>
+      )}
+
+      {/* Curriculum Tab Content */}
+      {activeTab === 'curriculum' && (
+        <>
+          {/* Stats */}
+          {curriculumTopics.length > 0 && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-center">
+                <p className="text-2xl font-black text-blue-600">{curriculumStats.total}</p>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Topics</p>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 text-center">
+                <p className="text-2xl font-black text-emerald-600">{curriculumStats.completed}</p>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Completed</p>
+              </div>
+              <div className="bg-purple-50 border border-purple-100 rounded-2xl p-3 text-center">
+                <p className="text-2xl font-black text-purple-600">{curriculumStats.subjects}</p>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Subjects</p>
+              </div>
+            </div>
+          )}
+
+          {/* Add / Edit Form */}
+          {showCurriculumForm && (
+            <div className="bg-white border-2 border-orange-100 rounded-3xl p-6 shadow-lg shadow-orange-50">
+              <h3 className="text-base font-black text-gray-800 mb-4">{editingCurriculumId ? 'Edit Topic' : 'Add Curriculum Topic'}</h3>
+              <form onSubmit={handleCurriculumSubmit} className="space-y-4">
+                {/* Subject selector */}
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Subject</label>
+                  <div className="flex flex-wrap gap-2">
+                    {SUBJECTS.map(s => (
+                      <button key={s} type="button" onClick={() => setCurriculumSubject(s)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                          curriculumSubject === s
+                            ? `${SUBJECT_COLORS[s].bg} ${SUBJECT_COLORS[s].text} border-transparent shadow-sm`
+                            : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+                        }`}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Topic Title</label>
+                    <input
+                      type="text" value={curriculumTitle} onChange={e => setCurriculumTitle(e.target.value)}
+                      placeholder="e.g. Algebra equations"
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:border-orange-400 outline-none"
+                      required autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Due Date (optional)</label>
+                    <input
+                      type="date" value={curriculumDueDate} onChange={e => setCurriculumDueDate(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:border-orange-400 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Notes (optional)</label>
+                  <textarea
+                    value={curriculumNotes} onChange={e => setCurriculumNotes(e.target.value)}
+                    placeholder="Learning objectives, resources, etc."
+                    rows={2}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:border-orange-400 outline-none resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={resetCurriculumForm}
+                    className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button type="submit"
+                    className="flex-1 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 shadow-md">
+                    {editingCurriculumId ? 'Save Changes' : 'Add Topic'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {curriculumTopics.length === 0 && !showCurriculumForm && (
+            <div className="text-center py-24 bg-white border-2 border-dashed border-gray-100 rounded-3xl">
+              <div className="text-5xl mb-4">📖</div>
+              <p className="text-gray-400 font-black uppercase tracking-widest text-sm">No curriculum topics yet</p>
+              <p className="text-gray-300 text-xs mt-1">Tap "Add Topic" to start building your study plan</p>
+            </div>
+          )}
+
+          {/* Topics grouped by subject */}
+          {curriculumTopics.length > 0 && (
+            <div className="space-y-6">
+              {SUBJECTS.map(subject => {
+                const topics = curriculumBySubject[subject];
+                if (topics.length === 0) return null;
+                const col = SUBJECT_COLORS[subject];
+                const completed = topics.filter(t => t.completed).length;
+                const progress = Math.round((completed / topics.length) * 100);
+
+                return (
+                  <div key={subject} className="space-y-3">
+                    {/* Subject header with progress */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${col.bg} ${col.text}`}>
+                          {subject}
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-400">
+                          {completed}/{topics.length} completed
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: col.dot }} />
+                        </div>
+                        <span className="text-[10px] font-black" style={{ color: col.dot }}>{progress}%</span>
+                      </div>
+                    </div>
+
+                    {/* Topic cards */}
+                    <div className="grid grid-cols-1 gap-2">
+                      {topics.map(topic => (
+                        <div key={topic.id} className={`bg-white rounded-xl border-l-4 border-y border-r border-gray-200 p-3 group transition-all hover:shadow-sm ${topic.completed ? 'opacity-60' : ''}`}
+                          style={{ borderLeftColor: col.dot }}>
+                          <div className="flex items-start gap-3">
+                            {/* Complete checkbox */}
+                            <button
+                              onClick={() => onToggleCurriculum(topic.id)}
+                              className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                                topic.completed ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300 hover:border-emerald-400'
+                              }`}
+                            >
+                              {topic.completed && <Icon name="check" className="w-3 h-3 text-white" />}
+                            </button>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className={`text-sm font-bold text-gray-800 ${topic.completed ? 'line-through text-gray-400' : ''}`}>
+                                  {topic.title}
+                                </p>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                  {!topic.completed && (
+                                    <button onClick={() => startEditCurriculum(topic)} className="p-1 text-gray-300 hover:text-gray-600 transition-colors">
+                                      <Icon name="edit" className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button onClick={() => onDeleteCurriculum(topic.id)} className="p-1 text-gray-300 hover:text-red-500 transition-colors">
+                                    <Icon name="trash" className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {(topic.dueDate || topic.notes) && (
+                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                  {topic.dueDate && (
+                                    <span className="text-[10px] font-bold text-gray-400">
+                                      Due {formatDate(topic.dueDate)}
+                                    </span>
+                                  )}
+                                  {topic.notes && (
+                                    <p className="text-[11px] text-gray-400 leading-relaxed">{topic.notes}</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
