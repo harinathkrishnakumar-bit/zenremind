@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic } from './types';
+import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic, GardenPlant, GardenTask } from './types';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import ReminderCard from './components/ReminderCard';
@@ -8,11 +8,12 @@ import HabitTracker from './components/HabitTracker';
 import VaultView from './components/VaultView';
 import PurchaseTracker from './components/PurchaseTracker';
 import HomeworkPlanner from './components/HomeworkPlanner';
+import GardenPlanner from './components/GardenPlanner';
 import { Icon } from './components/Icon';
 import { isToday, isThisWeek, isThisMonth } from './utils/dateUtils';
 import { getOccurrencesInRange } from './utils/recurrenceUtils';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem, fetchHomeworkItems, saveHomeworkItem, deleteHomeworkItem, fetchCurriculumTopics, saveCurriculumTopic, deleteCurriculumTopic } from './services/database';
+import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem, fetchHomeworkItems, saveHomeworkItem, deleteHomeworkItem, fetchCurriculumTopics, saveCurriculumTopic, deleteCurriculumTopic, fetchGardenPlants, saveGardenPlant, deleteGardenPlant, fetchGardenTasks, saveGardenTask, deleteGardenTask } from './services/database';
 
 const DASHBOARD_INTERVAL = 15000;
 const STANDARD_INTERVAL = 8000;
@@ -28,6 +29,8 @@ const App: React.FC = () => {
   const [groceryItems, setGroceryItems] = useState<GroceryItem[]>([]);
   const [homeworkItems, setHomeworkItems] = useState<HomeworkItem[]>([]);
   const [curriculumTopics, setCurriculumTopics] = useState<CurriculumTopic[]>([]);
+  const [gardenPlants, setGardenPlants] = useState<GardenPlant[]>([]);
+  const [gardenTasks, setGardenTasks] = useState<GardenTask[]>([]);
   const [activeView, setActiveView] = useState<ViewType>(ViewType.DASHBOARD);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -82,13 +85,15 @@ const App: React.FC = () => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [reminderData, habitData, vaultData, groceryData, homeworkData, curriculumData] = await Promise.all([
+        const [reminderData, habitData, vaultData, groceryData, homeworkData, curriculumData, gardenPlantsData, gardenTasksData] = await Promise.all([
           fetchReminders(user?.id || null),
           fetchHabits(user?.id || null),
           fetchVaultItems(user?.id || null),
           fetchGroceryItems(user?.id || null),
           fetchHomeworkItems(user?.id || null),
           fetchCurriculumTopics(user?.id || null),
+          fetchGardenPlants(user?.id || null),
+          fetchGardenTasks(user?.id || null),
         ]);
         setReminders(reminderData);
         setHabits(habitData);
@@ -96,6 +101,8 @@ const App: React.FC = () => {
         setGroceryItems(groceryData);
         setHomeworkItems(homeworkData);
         setCurriculumTopics(curriculumData);
+        setGardenPlants(gardenPlantsData);
+        setGardenTasks(gardenTasksData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -216,7 +223,7 @@ const App: React.FC = () => {
   }, [reminders]);
 
   const displayReminders = useMemo(() => {
-    if (activeView === ViewType.DASHBOARD || activeView === ViewType.HABITS) return [];
+    if (activeView === ViewType.DASHBOARD || activeView === ViewType.HABITS || activeView === ViewType.GARDEN) return [];
     const baseReminders = reminders.filter(r => !r.completed);
 
     if (activeView === ViewType.OUTSTANDING) {
@@ -401,6 +408,34 @@ const App: React.FC = () => {
     if (topic) await saveCurriculumTopic(user?.id || null, topic);
   };
 
+  // Garden handlers
+  const handleSaveGardenPlant = async (plant: GardenPlant) => {
+    setGardenPlants(prev => prev.some(p => p.id === plant.id) ? prev.map(p => p.id === plant.id ? plant : p) : [plant, ...prev]);
+    await saveGardenPlant(user?.id || null, plant);
+  };
+
+  const handleDeleteGardenPlant = async (id: string) => {
+    setGardenPlants(prev => prev.filter(p => p.id !== id));
+    await deleteGardenPlant(user?.id || null, id);
+  };
+
+  const handleSaveGardenTask = async (task: GardenTask) => {
+    setGardenTasks(prev => prev.some(t => t.id === task.id) ? prev.map(t => t.id === task.id ? task : t) : [task, ...prev]);
+    await saveGardenTask(user?.id || null, task);
+  };
+
+  const handleDeleteGardenTask = async (id: string) => {
+    setGardenTasks(prev => prev.filter(t => t.id !== id));
+    await deleteGardenTask(user?.id || null, id);
+  };
+
+  const handleToggleGardenTask = async (id: string) => {
+    const updated = gardenTasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+    setGardenTasks(updated);
+    const task = updated.find(t => t.id === id);
+    if (task) await saveGardenTask(user?.id || null, task);
+  };
+
   // Grocery/Purchase handlers
   const handleSaveGroceryItems = async (items: GroceryItem[]) => {
     setGroceryItems(prev => {
@@ -453,7 +488,7 @@ const App: React.FC = () => {
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 z-20">
           <div className="flex items-center gap-2">
             <h2 className="text-sm sm:text-lg font-black text-gray-800 tracking-tight truncate">
-              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView === ViewType.HOMEWORK ? "Riya's Homework" : activeView === ViewType.HABITS ? 'Habits' : activeView.replace(/_/g, ' ')}
+              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView === ViewType.HOMEWORK ? "Riya's Homework" : activeView === ViewType.HABITS ? 'Habits' : activeView === ViewType.GARDEN ? 'Garden Planner' : activeView.replace(/_/g, ' ')}
             </h2>
           </div>
 
@@ -768,6 +803,16 @@ const App: React.FC = () => {
                 onAddHabit={handleAddHabit}
                 onDeleteHabit={handleDeleteHabit}
                 onToggleDate={handleToggleHabitDate}
+              />
+            ) : activeView === ViewType.GARDEN ? (
+              <GardenPlanner
+                plants={gardenPlants}
+                tasks={gardenTasks}
+                onSavePlant={handleSaveGardenPlant}
+                onDeletePlant={handleDeleteGardenPlant}
+                onSaveTask={handleSaveGardenTask}
+                onDeleteTask={handleDeleteGardenTask}
+                onToggleTask={handleToggleGardenTask}
               />
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

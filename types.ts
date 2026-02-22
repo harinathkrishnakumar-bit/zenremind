@@ -18,7 +18,8 @@ export enum ViewType {
   RENEWALS = 'RENEWALS',
   VAULT = 'VAULT',
   PURCHASES = 'PURCHASES',
-  HOMEWORK = 'HOMEWORK'
+  HOMEWORK = 'HOMEWORK',
+  GARDEN = 'GARDEN'
 }
 
 export enum RecurrenceType {
@@ -111,4 +112,30 @@ export interface SmartReminderResponse {
   priority: Priority;
   category: string;
   cost?: number;
+}
+
+export type GardenStatus = 'ToBuy' | 'Sowing' | 'PlantOut' | 'Growing' | 'Harvesting' | 'Complete';
+export type PlantCategory = 'Vegetable' | 'Herb' | 'Flower' | 'Fruit' | 'Tree' | 'Shrub' | 'Other';
+
+export interface GardenPlant {
+  id: string;
+  name: string;
+  variety?: string;
+  category: PlantCategory;
+  status: GardenStatus;
+  quantity?: number;
+  sowDate?: string; // YYYY-MM-DD
+  plantOutDate?: string; // YYYY-MM-DD
+  harvestDate?: string; // YYYY-MM-DD
+  notes?: string;
+  createdAt: string;
+}
+
+export interface GardenTask {
+  id: string;
+  title: string;
+  description?: string;
+  dueDate?: string; // YYYY-MM-DD
+  completed: boolean;
+  createdAt: string;
 }

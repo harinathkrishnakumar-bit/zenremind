@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Reminder, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic } from '../types';
+import { Reminder, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic, GardenPlant, GardenTask } from '../types';
 
 const STORAGE_KEY_REMINDERS = 'zenremind_pro_v3_final_renewals';
 const STORAGE_KEY_HABITS = 'zenremind_habits_pro_v3_final_renewals';
@@ -507,5 +507,155 @@ export const deleteCurriculumTopic = async (userId: string | null, topicId: stri
     if (error) throw error;
   } catch (error) {
     console.error('Error deleting curriculum topic:', error);
+  }
+};
+
+// ============================================================================
+// GARDEN PLANTS
+// ============================================================================
+
+const STORAGE_KEY_GARDEN_PLANTS = 'zenremind_garden_plants_v1';
+
+export const fetchGardenPlants = async (userId: string | null): Promise<GardenPlant[]> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const saved = localStorage.getItem(STORAGE_KEY_GARDEN_PLANTS);
+    return saved ? JSON.parse(saved) : [];
+  }
+  try {
+    const { data, error } = await supabase
+      .from('garden_plants')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const plants = (data || []).map((d: any) => ({
+      id: d.id,
+      name: d.name,
+      variety: d.variety ?? undefined,
+      category: d.category,
+      status: d.status,
+      quantity: d.quantity ?? undefined,
+      sowDate: d.sow_date ?? undefined,
+      plantOutDate: d.plant_out_date ?? undefined,
+      harvestDate: d.harvest_date ?? undefined,
+      notes: d.notes ?? undefined,
+      createdAt: d.created_at,
+    }));
+    localStorage.setItem(STORAGE_KEY_GARDEN_PLANTS, JSON.stringify(plants));
+    return plants;
+  } catch (error) {
+    console.error('Error fetching garden plants:', error);
+    const saved = localStorage.getItem(STORAGE_KEY_GARDEN_PLANTS);
+    return saved ? JSON.parse(saved) : [];
+  }
+};
+
+export const saveGardenPlant = async (userId: string | null, plant: GardenPlant): Promise<void> => {
+  const local: GardenPlant[] = JSON.parse(localStorage.getItem(STORAGE_KEY_GARDEN_PLANTS) || '[]');
+  const exists = local.find(p => p.id === plant.id);
+  localStorage.setItem(STORAGE_KEY_GARDEN_PLANTS, JSON.stringify(
+    exists ? local.map(p => p.id === plant.id ? plant : p) : [plant, ...local]
+  ));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('garden_plants').upsert({
+      id: plant.id,
+      user_id: userId,
+      name: plant.name,
+      variety: plant.variety ?? null,
+      category: plant.category,
+      status: plant.status,
+      quantity: plant.quantity ?? null,
+      sow_date: plant.sowDate ?? null,
+      plant_out_date: plant.plantOutDate ?? null,
+      harvest_date: plant.harvestDate ?? null,
+      notes: plant.notes ?? null,
+      created_at: plant.createdAt,
+    }, { onConflict: 'id' });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving garden plant:', error);
+  }
+};
+
+export const deleteGardenPlant = async (userId: string | null, plantId: string): Promise<void> => {
+  const local: GardenPlant[] = JSON.parse(localStorage.getItem(STORAGE_KEY_GARDEN_PLANTS) || '[]');
+  localStorage.setItem(STORAGE_KEY_GARDEN_PLANTS, JSON.stringify(local.filter(p => p.id !== plantId)));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('garden_plants').delete().eq('id', plantId).eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting garden plant:', error);
+  }
+};
+
+// ============================================================================
+// GARDEN TASKS
+// ============================================================================
+
+const STORAGE_KEY_GARDEN_TASKS = 'zenremind_garden_tasks_v1';
+
+export const fetchGardenTasks = async (userId: string | null): Promise<GardenTask[]> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const saved = localStorage.getItem(STORAGE_KEY_GARDEN_TASKS);
+    return saved ? JSON.parse(saved) : [];
+  }
+  try {
+    const { data, error } = await supabase
+      .from('garden_tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .order('due_date', { ascending: true, nullsFirst: false });
+    if (error) throw error;
+    const tasks = (data || []).map((d: any) => ({
+      id: d.id,
+      title: d.title,
+      description: d.description ?? undefined,
+      dueDate: d.due_date ?? undefined,
+      completed: d.completed,
+      createdAt: d.created_at,
+    }));
+    localStorage.setItem(STORAGE_KEY_GARDEN_TASKS, JSON.stringify(tasks));
+    return tasks;
+  } catch (error) {
+    console.error('Error fetching garden tasks:', error);
+    const saved = localStorage.getItem(STORAGE_KEY_GARDEN_TASKS);
+    return saved ? JSON.parse(saved) : [];
+  }
+};
+
+export const saveGardenTask = async (userId: string | null, task: GardenTask): Promise<void> => {
+  const local: GardenTask[] = JSON.parse(localStorage.getItem(STORAGE_KEY_GARDEN_TASKS) || '[]');
+  const exists = local.find(t => t.id === task.id);
+  localStorage.setItem(STORAGE_KEY_GARDEN_TASKS, JSON.stringify(
+    exists ? local.map(t => t.id === task.id ? task : t) : [task, ...local]
+  ));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('garden_tasks').upsert({
+      id: task.id,
+      user_id: userId,
+      title: task.title,
+      description: task.description ?? null,
+      due_date: task.dueDate ?? null,
+      completed: task.completed,
+      created_at: task.createdAt,
+    }, { onConflict: 'id' });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving garden task:', error);
+  }
+};
+
+export const deleteGardenTask = async (userId: string | null, taskId: string): Promise<void> => {
+  const local: GardenTask[] = JSON.parse(localStorage.getItem(STORAGE_KEY_GARDEN_TASKS) || '[]');
+  localStorage.setItem(STORAGE_KEY_GARDEN_TASKS, JSON.stringify(local.filter(t => t.id !== taskId)));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('garden_tasks').delete().eq('id', taskId).eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting garden task:', error);
   }
 };
