@@ -1,9 +1,11 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import { Reminder, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic, GardenPlant, GardenTask } from '../types';
+import { Reminder, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic, GardenPlant, GardenTask, HolidayChecklistItem, ImmediateBuyItem } from '../types';
 
 const STORAGE_KEY_REMINDERS = 'zenremind_pro_v3_final_renewals';
 const STORAGE_KEY_HABITS = 'zenremind_habits_pro_v3_final_renewals';
 const STORAGE_KEY_VAULT = 'zenremind_vault_pro_v3';
+const STORAGE_KEY_HOLIDAY = 'zenremind_holiday_v1';
+const STORAGE_KEY_IMMEDIATE_BUY = 'zenremind_immediate_buy_v1';
 
 // ============================================================================
 // REMINDERS
@@ -657,5 +659,149 @@ export const deleteGardenTask = async (userId: string | null, taskId: string): P
     if (error) throw error;
   } catch (error) {
     console.error('Error deleting garden task:', error);
+  }
+};
+
+// ============================================================================
+// HOLIDAY CHECKLIST
+// ============================================================================
+
+export const fetchHolidayItems = async (userId: string | null): Promise<HolidayChecklistItem[]> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const saved = localStorage.getItem(STORAGE_KEY_HOLIDAY);
+    return saved ? JSON.parse(saved) : [];
+  }
+  try {
+    const { data, error } = await supabase
+      .from('holiday_checklist')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const items = (data || []).map((d: any) => ({
+      id: d.id,
+      holiday: d.holiday,
+      task: d.task,
+      category: d.category,
+      completed: d.completed,
+      dueDate: d.due_date ?? undefined,
+      notes: d.notes ?? undefined,
+      createdAt: d.created_at,
+    }));
+    localStorage.setItem(STORAGE_KEY_HOLIDAY, JSON.stringify(items));
+    return items;
+  } catch (error) {
+    console.error('Error fetching holiday items:', error);
+    const saved = localStorage.getItem(STORAGE_KEY_HOLIDAY);
+    return saved ? JSON.parse(saved) : [];
+  }
+};
+
+export const saveHolidayItem = async (userId: string | null, item: HolidayChecklistItem): Promise<void> => {
+  const local: HolidayChecklistItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY_HOLIDAY) || '[]');
+  const exists = local.find(i => i.id === item.id);
+  localStorage.setItem(STORAGE_KEY_HOLIDAY, JSON.stringify(
+    exists ? local.map(i => i.id === item.id ? item : i) : [item, ...local]
+  ));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('holiday_checklist').upsert({
+      id: item.id,
+      user_id: userId,
+      holiday: item.holiday,
+      task: item.task,
+      category: item.category,
+      completed: item.completed,
+      due_date: item.dueDate ?? null,
+      notes: item.notes ?? null,
+      created_at: item.createdAt,
+    }, { onConflict: 'id' });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving holiday item:', error);
+  }
+};
+
+export const deleteHolidayItem = async (userId: string | null, itemId: string): Promise<void> => {
+  const local: HolidayChecklistItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY_HOLIDAY) || '[]');
+  localStorage.setItem(STORAGE_KEY_HOLIDAY, JSON.stringify(local.filter(i => i.id !== itemId)));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('holiday_checklist').delete().eq('id', itemId).eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting holiday item:', error);
+  }
+};
+
+// ============================================================================
+// IMMEDIATE BUY LIST
+// ============================================================================
+
+export const fetchImmediateBuyItems = async (userId: string | null): Promise<ImmediateBuyItem[]> => {
+  if (!isSupabaseConfigured() || !userId) {
+    const saved = localStorage.getItem(STORAGE_KEY_IMMEDIATE_BUY);
+    return saved ? JSON.parse(saved) : [];
+  }
+  try {
+    const { data, error } = await supabase
+      .from('immediate_buy_list')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    const items = (data || []).map((d: any) => ({
+      id: d.id,
+      item: d.item,
+      quantity: d.quantity ?? undefined,
+      store: d.store ?? undefined,
+      priority: d.priority,
+      completed: d.completed,
+      cost: d.cost ?? undefined,
+      createdAt: d.created_at,
+    }));
+    localStorage.setItem(STORAGE_KEY_IMMEDIATE_BUY, JSON.stringify(items));
+    return items;
+  } catch (error) {
+    console.error('Error fetching immediate buy items:', error);
+    const saved = localStorage.getItem(STORAGE_KEY_IMMEDIATE_BUY);
+    return saved ? JSON.parse(saved) : [];
+  }
+};
+
+export const saveImmediateBuyItem = async (userId: string | null, item: ImmediateBuyItem): Promise<void> => {
+  const local: ImmediateBuyItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY_IMMEDIATE_BUY) || '[]');
+  const exists = local.find(i => i.id === item.id);
+  localStorage.setItem(STORAGE_KEY_IMMEDIATE_BUY, JSON.stringify(
+    exists ? local.map(i => i.id === item.id ? item : i) : [item, ...local]
+  ));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('immediate_buy_list').upsert({
+      id: item.id,
+      user_id: userId,
+      item: item.item,
+      quantity: item.quantity ?? null,
+      store: item.store ?? null,
+      priority: item.priority,
+      completed: item.completed,
+      cost: item.cost ?? null,
+      created_at: item.createdAt,
+    }, { onConflict: 'id' });
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error saving immediate buy item:', error);
+  }
+};
+
+export const deleteImmediateBuyItem = async (userId: string | null, itemId: string): Promise<void> => {
+  const local: ImmediateBuyItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY_IMMEDIATE_BUY) || '[]');
+  localStorage.setItem(STORAGE_KEY_IMMEDIATE_BUY, JSON.stringify(local.filter(i => i.id !== itemId)));
+  if (!isSupabaseConfigured() || !userId) return;
+  try {
+    const { error } = await supabase.from('immediate_buy_list').delete().eq('id', itemId).eq('user_id', userId);
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error deleting immediate buy item:', error);
   }
 };

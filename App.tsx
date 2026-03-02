@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic, GardenPlant, GardenTask } from './types';
+import { Reminder, ViewType, Priority, RecurrenceType, Habit, VaultItem, GroceryItem, HomeworkItem, CurriculumTopic, GardenPlant, GardenTask, HolidayChecklistItem, ImmediateBuyItem } from './types';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
 import ReminderCard from './components/ReminderCard';
@@ -9,11 +9,13 @@ import VaultView from './components/VaultView';
 import PurchaseTracker from './components/PurchaseTracker';
 import HomeworkPlanner from './components/HomeworkPlanner';
 import GardenPlanner from './components/GardenPlanner';
+import HolidayChecklist from './components/HolidayChecklist';
+import ImmediateBuyList from './components/ImmediateBuyList';
 import { Icon } from './components/Icon';
 import { isToday, isThisWeek, isThisMonth } from './utils/dateUtils';
 import { getOccurrencesInRange } from './utils/recurrenceUtils';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
-import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem, fetchHomeworkItems, saveHomeworkItem, deleteHomeworkItem, fetchCurriculumTopics, saveCurriculumTopic, deleteCurriculumTopic, fetchGardenPlants, saveGardenPlant, deleteGardenPlant, fetchGardenTasks, saveGardenTask, deleteGardenTask } from './services/database';
+import { fetchReminders, saveReminder, deleteReminder, fetchHabits, saveHabit, deleteHabit, fetchVaultItems, saveVaultItem, deleteVaultItem, fetchGroceryItems, saveGroceryItem, deleteGroceryItem, fetchHomeworkItems, saveHomeworkItem, deleteHomeworkItem, fetchCurriculumTopics, saveCurriculumTopic, deleteCurriculumTopic, fetchGardenPlants, saveGardenPlant, deleteGardenPlant, fetchGardenTasks, saveGardenTask, deleteGardenTask, fetchHolidayItems, saveHolidayItem, deleteHolidayItem, fetchImmediateBuyItems, saveImmediateBuyItem, deleteImmediateBuyItem } from './services/database';
 
 const DASHBOARD_INTERVAL = 15000;
 const STANDARD_INTERVAL = 8000;
@@ -31,6 +33,8 @@ const App: React.FC = () => {
   const [curriculumTopics, setCurriculumTopics] = useState<CurriculumTopic[]>([]);
   const [gardenPlants, setGardenPlants] = useState<GardenPlant[]>([]);
   const [gardenTasks, setGardenTasks] = useState<GardenTask[]>([]);
+  const [holidayItems, setHolidayItems] = useState<HolidayChecklistItem[]>([]);
+  const [immediateBuyItems, setImmediateBuyItems] = useState<ImmediateBuyItem[]>([]);
   const [activeView, setActiveView] = useState<ViewType>(ViewType.DASHBOARD);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
@@ -85,7 +89,7 @@ const App: React.FC = () => {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const [reminderData, habitData, vaultData, groceryData, homeworkData, curriculumData, gardenPlantsData, gardenTasksData] = await Promise.all([
+        const [reminderData, habitData, vaultData, groceryData, homeworkData, curriculumData, gardenPlantsData, gardenTasksData, holidayData, immediateBuyData] = await Promise.all([
           fetchReminders(user?.id || null),
           fetchHabits(user?.id || null),
           fetchVaultItems(user?.id || null),
@@ -94,6 +98,8 @@ const App: React.FC = () => {
           fetchCurriculumTopics(user?.id || null),
           fetchGardenPlants(user?.id || null),
           fetchGardenTasks(user?.id || null),
+          fetchHolidayItems(user?.id || null),
+          fetchImmediateBuyItems(user?.id || null),
         ]);
         setReminders(reminderData);
         setHabits(habitData);
@@ -103,6 +109,8 @@ const App: React.FC = () => {
         setCurriculumTopics(curriculumData);
         setGardenPlants(gardenPlantsData);
         setGardenTasks(gardenTasksData);
+        setHolidayItems(holidayData);
+        setImmediateBuyItems(immediateBuyData);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -223,7 +231,7 @@ const App: React.FC = () => {
   }, [reminders]);
 
   const displayReminders = useMemo(() => {
-    if (activeView === ViewType.DASHBOARD || activeView === ViewType.HABITS || activeView === ViewType.GARDEN) return [];
+    if (activeView === ViewType.DASHBOARD || activeView === ViewType.HABITS || activeView === ViewType.GARDEN || activeView === ViewType.HOLIDAY_CHECKLIST || activeView === ViewType.IMMEDIATE_BUY) return [];
     const baseReminders = reminders.filter(r => !r.completed);
 
     if (activeView === ViewType.OUTSTANDING) {
@@ -436,6 +444,42 @@ const App: React.FC = () => {
     if (task) await saveGardenTask(user?.id || null, task);
   };
 
+  // Holiday Checklist handlers
+  const handleSaveHolidayItem = async (item: HolidayChecklistItem) => {
+    setHolidayItems(prev => prev.some(i => i.id === item.id) ? prev.map(i => i.id === item.id ? item : i) : [item, ...prev]);
+    await saveHolidayItem(user?.id || null, item);
+  };
+
+  const handleDeleteHolidayItem = async (id: string) => {
+    setHolidayItems(prev => prev.filter(i => i.id !== id));
+    await deleteHolidayItem(user?.id || null, id);
+  };
+
+  const handleToggleHolidayItem = async (id: string) => {
+    const updated = holidayItems.map(i => i.id === id ? { ...i, completed: !i.completed } : i);
+    setHolidayItems(updated);
+    const item = updated.find(i => i.id === id);
+    if (item) await saveHolidayItem(user?.id || null, item);
+  };
+
+  // Immediate Buy List handlers
+  const handleSaveImmediateBuyItem = async (item: ImmediateBuyItem) => {
+    setImmediateBuyItems(prev => prev.some(i => i.id === item.id) ? prev.map(i => i.id === item.id ? item : i) : [item, ...prev]);
+    await saveImmediateBuyItem(user?.id || null, item);
+  };
+
+  const handleDeleteImmediateBuyItem = async (id: string) => {
+    setImmediateBuyItems(prev => prev.filter(i => i.id !== id));
+    await deleteImmediateBuyItem(user?.id || null, id);
+  };
+
+  const handleToggleImmediateBuyItem = async (id: string) => {
+    const updated = immediateBuyItems.map(i => i.id === id ? { ...i, completed: !i.completed } : i);
+    setImmediateBuyItems(updated);
+    const item = updated.find(i => i.id === id);
+    if (item) await saveImmediateBuyItem(user?.id || null, item);
+  };
+
   // Grocery/Purchase handlers
   const handleSaveGroceryItems = async (items: GroceryItem[]) => {
     setGroceryItems(prev => {
@@ -488,7 +532,7 @@ const App: React.FC = () => {
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 shrink-0 z-20">
           <div className="flex items-center gap-2">
             <h2 className="text-sm sm:text-lg font-black text-gray-800 tracking-tight truncate">
-              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView === ViewType.HOMEWORK ? "Riya's Homework" : activeView === ViewType.HABITS ? 'Habits' : activeView === ViewType.GARDEN ? 'Garden Planner' : activeView.replace(/_/g, ' ')}
+              {activeView === ViewType.SHOPPING ? 'Buy List' : activeView === ViewType.WORKS ? 'Works' : activeView === ViewType.RENEWALS ? 'Policies & Renewals' : activeView === ViewType.TODAY ? "Timeline" : activeView === ViewType.PURCHASES ? 'Purchase Tracker' : activeView === ViewType.HOMEWORK ? "Riya's Homework" : activeView === ViewType.HABITS ? 'Habits' : activeView === ViewType.GARDEN ? 'Garden Planner' : activeView === ViewType.HOLIDAY_CHECKLIST ? 'Holiday Checklist' : activeView === ViewType.IMMEDIATE_BUY ? 'Immediate Buy List' : activeView.replace(/_/g, ' ')}
             </h2>
           </div>
 
@@ -655,6 +699,59 @@ const App: React.FC = () => {
                   </div>
                 )}
 
+                {/* Immediate Buy List */}
+                {immediateBuyItems.filter(i => !i.completed).length > 0 && (
+                  <div className="bg-white border-2 border-orange-50 rounded-[2.5rem] shadow-xl shadow-orange-500/5 overflow-hidden border-t-orange-500 border-t-8">
+                    <div className="px-8 py-6 border-b border-gray-100 bg-orange-50/30 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Icon name="shopping-cart" className="w-5 h-5 text-orange-600" />
+                        <h2 className="text-xs font-black text-orange-800 uppercase tracking-widest">Immediate Buy List</h2>
+                      </div>
+                      <button onClick={() => setActiveView(ViewType.IMMEDIATE_BUY)} className="text-[10px] font-black text-orange-600 hover:underline tracking-widest uppercase">View All</button>
+                    </div>
+                    <div className="p-8 space-y-3">
+                      {immediateBuyItems.filter(i => !i.completed).slice(0, 5).map(item => {
+                        const priorityColors = {
+                          [Priority.HIGH]: 'border-red-300 bg-red-50/50',
+                          [Priority.MEDIUM]: 'border-orange-300 bg-orange-50/50',
+                          [Priority.LOW]: 'border-emerald-300 bg-emerald-50/50'
+                        };
+                        return (
+                          <div key={item.id} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all hover:shadow-md ${priorityColors[item.priority]}`}>
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <button
+                                onClick={() => handleToggleImmediateBuyItem(item.id)}
+                                className="w-6 h-6 rounded-full border-2 border-gray-300 hover:border-emerald-400 flex items-center justify-center shrink-0 transition-all bg-white"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-gray-800 truncate">{item.item}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {item.quantity && (
+                                    <span className="text-[10px] font-black text-gray-400">×{item.quantity}</span>
+                                  )}
+                                  {item.store && (
+                                    <span className="text-[10px] font-bold text-gray-400">{item.store}</span>
+                                  )}
+                                  {item.cost && (
+                                    <span className="text-[10px] font-bold text-orange-600">${item.cost.toFixed(2)}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <span className={`text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-wider shrink-0 ml-2 ${
+                              item.priority === Priority.HIGH ? 'bg-red-100 text-red-700' :
+                              item.priority === Priority.MEDIUM ? 'bg-orange-100 text-orange-700' :
+                              'bg-emerald-100 text-emerald-700'
+                            }`}>
+                              {item.priority}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Habits */}
                 <HabitTracker
                   habits={habits}
@@ -813,6 +910,20 @@ const App: React.FC = () => {
                 onSaveTask={handleSaveGardenTask}
                 onDeleteTask={handleDeleteGardenTask}
                 onToggleTask={handleToggleGardenTask}
+              />
+            ) : activeView === ViewType.HOLIDAY_CHECKLIST ? (
+              <HolidayChecklist
+                items={holidayItems}
+                onSave={handleSaveHolidayItem}
+                onDelete={handleDeleteHolidayItem}
+                onToggleComplete={handleToggleHolidayItem}
+              />
+            ) : activeView === ViewType.IMMEDIATE_BUY ? (
+              <ImmediateBuyList
+                items={immediateBuyItems}
+                onSave={handleSaveImmediateBuyItem}
+                onDelete={handleDeleteImmediateBuyItem}
+                onToggleComplete={handleToggleImmediateBuyItem}
               />
             ) : (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

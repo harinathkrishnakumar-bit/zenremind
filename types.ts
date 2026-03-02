@@ -19,7 +19,9 @@ export enum ViewType {
   VAULT = 'VAULT',
   PURCHASES = 'PURCHASES',
   HOMEWORK = 'HOMEWORK',
-  GARDEN = 'GARDEN'
+  GARDEN = 'GARDEN',
+  HOLIDAY_CHECKLIST = 'HOLIDAY_CHECKLIST',
+  IMMEDIATE_BUY = 'IMMEDIATE_BUY'
 }
 
 export enum RecurrenceType {
@@ -137,5 +139,29 @@ export interface GardenTask {
   description?: string;
   dueDate?: string; // YYYY-MM-DD
   completed: boolean;
+  createdAt: string;
+}
+
+export type HolidayCategory = 'Shopping' | 'Planning' | 'Cooking' | 'Decorating' | 'Travel' | 'Gifts' | 'Other';
+
+export interface HolidayChecklistItem {
+  id: string;
+  holiday: string; // e.g., "Christmas 2026"
+  task: string;
+  category: HolidayCategory;
+  completed: boolean;
+  dueDate?: string; // YYYY-MM-DD
+  notes?: string;
+  createdAt: string;
+}
+
+export interface ImmediateBuyItem {
+  id: string;
+  item: string;
+  quantity?: number;
+  store?: string;
+  priority: Priority;
+  completed: boolean;
+  cost?: number;
   createdAt: string;
 }
