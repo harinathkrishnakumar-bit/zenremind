@@ -584,16 +584,21 @@ const App: React.FC = () => {
                     {todayEvents.length === 0 ? (
                       <p className="text-center text-xs font-bold text-gray-300 uppercase tracking-widest py-6">Nothing scheduled for today</p>
                     ) : todayEvents.map(item => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-blue-200 transition-all">
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-blue-200 transition-all group">
                         <div className="flex flex-col min-w-0">
                           <span className="text-sm font-black text-gray-800 truncate">{item.title}</span>
                           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">
                             {item.category} {item.dueDate ? `• ${new Date(item.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
                           </span>
                         </div>
-                        <button onClick={() => handleToggleComplete(item.id)} className="w-8 h-8 flex items-center justify-center bg-white rounded-xl border border-gray-200 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm shrink-0 ml-3">
-                          <Icon name="check" className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <button onClick={() => handleDeleteReminder(item.id)} className="w-8 h-8 flex items-center justify-center bg-white rounded-xl border border-gray-200 text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                            <Icon name="trash" className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleToggleComplete(item.id)} className="w-8 h-8 flex items-center justify-center bg-white rounded-xl border border-gray-200 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+                            <Icon name="check" className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -609,14 +614,19 @@ const App: React.FC = () => {
                       </div>
                       <div className="p-8 space-y-4">
                         {dashboardData.highPriorityItems.length > 0 ? dashboardData.highPriorityItems.map(item => (
-                          <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-red-200 transition-all hover:translate-x-1">
+                          <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100 hover:border-red-200 transition-all group">
                             <div className="flex flex-col min-w-0">
                                <span className="text-sm font-black text-gray-800 truncate">{item.title}</span>
                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">{item.category} • {new Date(item.dueDate).toLocaleDateString()}</span>
                             </div>
-                            <button onClick={() => handleToggleComplete(item.id)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl border border-gray-200 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
-                               <Icon name="check" className="w-5 h-5" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => handleDeleteReminder(item.id)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl border border-gray-200 text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                <Icon name="trash" className="w-5 h-5" />
+                              </button>
+                              <button onClick={() => handleToggleComplete(item.id)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl border border-gray-200 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm">
+                                <Icon name="check" className="w-5 h-5" />
+                              </button>
+                            </div>
                           </div>
                         )) : (
                           <div className="text-center py-10">
