@@ -275,45 +275,78 @@ const App: React.FC = () => {
     const isRecurring = id.includes('::');
     const baseId = isRecurring ? id.split('::')[0] : id;
 
-    if (!isRecurring) {
-      await deleteReminder(user?.id || null, baseId);
-      setReminders(prev => prev.filter(r => r.id !== baseId));
-    } else {
-      const updated = reminders.map(r =>
-        r.id === baseId ? { ...r, completedInstances: [...(r.completedInstances || []), id] } : r
-      );
-      setReminders(updated);
-      const reminder = updated.find(r => r.id === baseId);
-      if (reminder) await saveReminder(user?.id || null, reminder);
+    try {
+      if (!isRecurring) {
+        // Optimistically update UI first
+        setReminders(prev => prev.filter(r => r.id !== baseId));
+        // Then delete from database
+        await deleteReminder(user?.id || null, baseId);
+      } else {
+        // For recurring: mark instance as complete
+        const updated = reminders.map(r =>
+          r.id === baseId ? { ...r, completedInstances: [...(r.completedInstances || []), id] } : r
+        );
+        setReminders(updated);
+        const reminder = updated.find(r => r.id === baseId);
+        if (reminder) await saveReminder(user?.id || null, reminder);
+      }
+    } catch (error) {
+      console.error('Error completing task:', error);
+      // Reload data on error to ensure consistency
+      const reminderData = await fetchReminders(user?.id || null);
+      setReminders(reminderData);
+      alert('Failed to complete task. Please try again.');
     }
   };
 
   const handleSaveReminder = async (data: any) => {
-    let reminder: Reminder;
+    try {
+      let reminder: Reminder;
 
-    if (data.id) {
-      // Update existing
-      reminder = { ...reminders.find(r => r.id === data.id)!, ...data } as Reminder;
-      setReminders(prev => prev.map(r => r.id === data.id ? reminder : r));
-    } else {
-      // Create new
-      reminder = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString(),
-        completed: false,
-        completedInstances: []
-      };
-      setReminders(prev => [...prev, reminder]);
+      if (data.id) {
+        // Update existing
+        const existingReminder = reminders.find(r => r.id === data.id);
+        if (!existingReminder) {
+          throw new Error('Task not found');
+        }
+        reminder = { ...existingReminder, ...data } as Reminder;
+        setReminders(prev => prev.map(r => r.id === data.id ? reminder : r));
+      } else {
+        // Create new with unique ID
+        reminder = {
+          ...data,
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+          createdAt: new Date().toISOString(),
+          completed: false,
+          completedInstances: []
+        };
+        setReminders(prev => [...prev, reminder]);
+      }
+
+      await saveReminder(user?.id || null, reminder);
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Error saving task:', error);
+      // Reload data on error
+      const reminderData = await fetchReminders(user?.id || null);
+      setReminders(reminderData);
+      alert('Failed to save task. Please try again.');
     }
-
-    await saveReminder(user?.id || null, reminder);
-    setIsModalOpen(false);
   };
 
   const handleDeleteReminder = async (id: string) => {
-    await deleteReminder(user?.id || null, id);
-    setReminders(prev => prev.filter(r => r.id !== id));
+    try {
+      // Optimistically update UI first
+      setReminders(prev => prev.filter(r => r.id !== id));
+      // Then delete from database
+      await deleteReminder(user?.id || null, id);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      // Reload data on error to ensure consistency
+      const reminderData = await fetchReminders(user?.id || null);
+      setReminders(reminderData);
+      alert('Failed to delete task. Please try again.');
+    }
   };
 
   const handleAddHabit = async (title: string) => {
