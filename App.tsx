@@ -621,17 +621,17 @@ const App: React.FC = () => {
             {activeView === ViewType.DASHBOARD ? (
               <div className="space-y-8 animate-in fade-in duration-500">
                 {/* Quick Delete Tool */}
-                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 animate-pulse">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <div className="flex-1">
                       <p className="text-xs font-black text-red-600 uppercase tracking-widest mb-1">🗑️ Quick Delete Tool</p>
-                      <p className="text-[10px] text-red-500 font-medium">Delete "Badminton riya" or any other persistent task</p>
+                      <p className="text-[10px] text-red-500 font-medium">Found {reminders.filter(r => r.title.toLowerCase().includes('badminton')).length} task(s) with "badminton" - Click to delete all</p>
                     </div>
                     <button
-                      onClick={() => handleDeleteTaskByName('Badminton riya')}
+                      onClick={() => handleDeleteTaskByName('badminton')}
                       className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold text-xs hover:bg-red-600 transition-all shadow-md whitespace-nowrap"
                     >
-                      Delete "Badminton riya"
+                      Delete All "Badminton" Tasks ({reminders.filter(r => r.title.toLowerCase().includes('badminton')).length})
                     </button>
                   </div>
                 </div>
