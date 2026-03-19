@@ -349,6 +349,37 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteTaskByName = async (taskName: string) => {
+    const matchingTasks = reminders.filter(r =>
+      r.title.toLowerCase().includes(taskName.toLowerCase())
+    );
+
+    if (matchingTasks.length === 0) {
+      alert(`No tasks found with name "${taskName}"`);
+      return;
+    }
+
+    const confirmMsg = `Found ${matchingTasks.length} task(s) named "${taskName}":\n\n` +
+      matchingTasks.map(t => `- ${t.title} (Category: ${t.category}, ID: ${t.id})`).join('\n') +
+      '\n\nDelete all of them?';
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      // Delete all matching tasks
+      for (const task of matchingTasks) {
+        await deleteReminder(user?.id || null, task.id);
+      }
+      setReminders(prev => prev.filter(r => !matchingTasks.some(t => t.id === r.id)));
+      alert(`Successfully deleted ${matchingTasks.length} task(s)`);
+    } catch (error) {
+      console.error('Error deleting tasks:', error);
+      const reminderData = await fetchReminders(user?.id || null);
+      setReminders(reminderData);
+      alert('Failed to delete some tasks. Please try again.');
+    }
+  };
+
   const handleAddHabit = async (title: string) => {
     const habit: Habit = {
       id: Date.now().toString(),
@@ -589,6 +620,22 @@ const App: React.FC = () => {
           <div className="max-w-5xl mx-auto space-y-8">
             {activeView === ViewType.DASHBOARD ? (
               <div className="space-y-8 animate-in fade-in duration-500">
+                {/* Quick Delete Tool */}
+                <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="flex-1">
+                      <p className="text-xs font-black text-red-600 uppercase tracking-widest mb-1">🗑️ Quick Delete Tool</p>
+                      <p className="text-[10px] text-red-500 font-medium">Delete "Badminton riya" or any other persistent task</p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTaskByName('Badminton riya')}
+                      className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold text-xs hover:bg-red-600 transition-all shadow-md whitespace-nowrap"
+                    >
+                      Delete "Badminton riya"
+                    </button>
+                  </div>
+                </div>
+
                 {/* Stats Row */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
