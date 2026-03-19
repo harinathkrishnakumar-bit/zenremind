@@ -139,6 +139,7 @@ export interface GardenTask {
   description?: string;
   dueDate?: string; // YYYY-MM-DD
   completed: boolean;
+  recurrence?: RecurrenceConfig;
   createdAt: string;
 }
 

@@ -616,6 +616,7 @@ export const fetchGardenTasks = async (userId: string | null): Promise<GardenTas
       description: d.description ?? undefined,
       dueDate: d.due_date ?? undefined,
       completed: d.completed,
+      recurrence: d.recurrence ?? undefined,
       createdAt: d.created_at,
     }));
     localStorage.setItem(STORAGE_KEY_GARDEN_TASKS, JSON.stringify(tasks));
@@ -642,6 +643,7 @@ export const saveGardenTask = async (userId: string | null, task: GardenTask): P
       description: task.description ?? null,
       due_date: task.dueDate ?? null,
       completed: task.completed,
+      recurrence: task.recurrence ?? null,
       created_at: task.createdAt,
     }, { onConflict: 'id' });
     if (error) throw error;

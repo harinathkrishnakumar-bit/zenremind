@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { GardenPlant, GardenTask, PlantCategory, GardenStatus } from '../types';
+import { GardenPlant, GardenTask, PlantCategory, GardenStatus, RecurrenceType } from '../types';
 import { Icon } from './Icon';
 
 interface GardenPlannerProps {
@@ -62,6 +62,7 @@ const GardenPlanner: React.FC<GardenPlannerProps> = ({
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
   const [taskDueDate, setTaskDueDate] = useState('');
+  const [taskRecurYearly, setTaskRecurYearly] = useState(false);
 
   const resetPlantForm = () => {
     setPlantName(''); setPlantVariety(''); setPlantCategory('Vegetable');
@@ -71,7 +72,7 @@ const GardenPlanner: React.FC<GardenPlannerProps> = ({
   };
 
   const resetTaskForm = () => {
-    setTaskTitle(''); setTaskDescription(''); setTaskDueDate('');
+    setTaskTitle(''); setTaskDescription(''); setTaskDueDate(''); setTaskRecurYearly(false);
     setEditingTaskId(null); setShowTaskForm(false);
   };
 
@@ -100,15 +101,15 @@ const GardenPlanner: React.FC<GardenPlannerProps> = ({
   const handleTaskSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
+    const existingTask = editingTaskId ? tasks.find(t => t.id === editingTaskId) : null;
     const task: GardenTask = {
       id: editingTaskId || Date.now().toString(),
       title: taskTitle.trim(),
       description: taskDescription.trim() || undefined,
       dueDate: taskDueDate || undefined,
-      completed: false,
-      createdAt: editingTaskId
-        ? (tasks.find(t => t.id === editingTaskId)?.createdAt || new Date().toISOString())
-        : new Date().toISOString(),
+      completed: existingTask?.completed || false,
+      recurrence: taskRecurYearly ? { type: RecurrenceType.YEARLY } : undefined,
+      createdAt: existingTask?.createdAt || new Date().toISOString(),
     };
     onSaveTask(task);
     resetTaskForm();
@@ -132,6 +133,7 @@ const GardenPlanner: React.FC<GardenPlannerProps> = ({
     setTaskTitle(task.title);
     setTaskDescription(task.description || '');
     setTaskDueDate(task.dueDate || '');
+    setTaskRecurYearly(task.recurrence?.type === RecurrenceType.YEARLY);
     setEditingTaskId(task.id);
     setShowTaskForm(true);
   };
@@ -192,7 +194,9 @@ const GardenPlanner: React.FC<GardenPlannerProps> = ({
             if (activeTab === 'plants') {
               resetPlantForm();
               setShowPlantForm(true);
-            } else if (activeTab === 'tasks') {
+            } else {
+              // For tasks or calendar tab, show task form
+              setActiveTab('tasks');
               resetTaskForm();
               setShowTaskForm(true);
             }
@@ -466,6 +470,20 @@ const GardenPlanner: React.FC<GardenPlannerProps> = ({
                 </div>
 
                 <div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={taskRecurYearly}
+                      onChange={e => setTaskRecurYearly(e.target.checked)}
+                      className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-400"
+                    />
+                    <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                      🔁 Repeat yearly (for seasonal tasks)
+                    </span>
+                  </label>
+                </div>
+
+                <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Description (optional)</label>
                   <textarea
                     value={taskDescription} onChange={e => setTaskDescription(e.target.value)}
@@ -514,7 +532,14 @@ const GardenPlanner: React.FC<GardenPlannerProps> = ({
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1">
-                                <p className="text-sm font-bold text-gray-800">{task.title}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-bold text-gray-800">{task.title}</p>
+                                  {task.recurrence?.type === RecurrenceType.YEARLY && (
+                                    <span className="text-[9px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-lg uppercase tracking-wider" title="Repeats yearly">
+                                      🔁 Yearly
+                                    </span>
+                                  )}
+                                </div>
                                 {task.dueDate && (
                                   <span className="text-[10px] font-bold text-gray-500 mt-1 block">
                                     Due: {formatDate(task.dueDate)}
